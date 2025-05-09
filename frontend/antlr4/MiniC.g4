@@ -106,3 +106,5 @@ T_DECIMAL: '0' | [1-9][0-9]*; // 十进制
 
 /* 空白符丢弃 */
 WS: [ \r\n\t]+ -> skip;
+COMMENT: '/*' .*? '*/' -> skip;
+LINE_COMMENT: '//' ~[\r\n]* -> skip;

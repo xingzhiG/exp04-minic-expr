@@ -428,7 +428,7 @@ void InstSelectorArm32::translate_neg_int32(Instruction * inst)
     iloc.inst("rsb",
               PlatformArm32::regName[load_result_reg_no],
               PlatformArm32::regName[load_arg_reg_no],
-              "0");
+              "#0");
 
     // 结果不是寄存器，则需要把结果保存到结果变量中
     if (result_reg_no == -1) {
