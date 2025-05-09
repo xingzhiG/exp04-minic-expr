@@ -366,22 +366,22 @@ void InstSelectorArm32::translate_mod_int32(Instruction * inst)
         load_result_reg_no = result_reg_no;
     }
 
-    // 计算商
-    iloc.inst("sdiv",
-              PlatformArm32::regName[load_result_reg_no],
-              PlatformArm32::regName[load_arg1_reg_no],
-              PlatformArm32::regName[load_arg2_reg_no]);
+	// 计算商
+	iloc.inst("sdiv",
+		PlatformArm32::regName[load_result_reg_no],
+		PlatformArm32::regName[load_arg1_reg_no],
+		PlatformArm32::regName[load_arg2_reg_no]);
 
-    // 计算余数
-    iloc.inst("mul",
-              PlatformArm32::regName[load_arg1_reg_no],
-              PlatformArm32::regName[load_result_reg_no],
-              PlatformArm32::regName[load_arg2_reg_no]);
+	// 计算余数：rs = dividend - (quotient * divisor)
+	iloc.inst("mul",
+		PlatformArm32::regName[load_result_reg_no],
+		PlatformArm32::regName[load_result_reg_no],
+		PlatformArm32::regName[load_arg2_reg_no]);
 
-    iloc.inst("sub",
-              PlatformArm32::regName[load_result_reg_no],
-              PlatformArm32::regName[load_arg1_reg_no],
-              PlatformArm32::regName[load_arg1_reg_no]);
+	iloc.inst("sub",
+		PlatformArm32::regName[load_result_reg_no],
+		PlatformArm32::regName[load_arg1_reg_no],
+		PlatformArm32::regName[load_result_reg_no]); // 乘积结果
 
     // 结果不是寄存器，则需要把结果保存到结果变量中
     if (result_reg_no == -1) {
