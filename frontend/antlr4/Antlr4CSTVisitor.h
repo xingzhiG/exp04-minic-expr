@@ -132,9 +132,9 @@ protected:
     /// @return std::any AST的节点
     ///
     std::any visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx) override;
-	std::any visitT_OCTAL(MiniCParser::T_OCTALContext * ctx);
-	std::any visitT_HEX(MiniCParser::T_HEXContext * ctx);
-	std::any visitT_DECIMAL(MiniCParser::T_DECIMALContext * ctx);
+	// std::any visitT_OCTAL(MiniCParser::T_OCTALContext * ctx);
+	// std::any visitT_HEX(MiniCParser::T_HEXContext * ctx);
+	// std::any visitT_DECIMAL(MiniCParser::T_DECIMALContext * ctx);
 
     ///
     /// @brief 非终结符LVal的分析
