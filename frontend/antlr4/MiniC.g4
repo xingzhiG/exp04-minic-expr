@@ -44,8 +44,14 @@ statement:
 // 表达式文法 expr : AddExp 表达式目前只支持加法与减法运算
 expr: addExp;
 
+// 乘除求余表达式
+multExp: unaryExp (multOp unaryExp)*;
+
+// 乘除求余运算符
+multOp: T_MUL | T_DIV | T_MOD;
+
 // 加减表达式
-addExp: unaryExp (addOp unaryExp)*;
+addExp: multExp (addOp multExp)*;
 
 // 加减运算符
 addOp: T_ADD | T_SUB;
@@ -83,6 +89,9 @@ T_COMMA: ',';
 
 T_ADD: '+';
 T_SUB: '-';
+T_MUL: '*';
+T_DIV: '/';
+T_MOD: '%';
 
 // 要注意关键字同样也属于T_ID，因此必须放在T_ID的前面，否则会识别成T_ID
 T_RETURN: 'return';

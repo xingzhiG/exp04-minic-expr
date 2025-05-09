@@ -219,14 +219,51 @@ std::any MiniCCSTVisitor::visitBlockStatement(MiniCParser::BlockStatementContext
     return visitBlock(ctx->block());
 }
 
+std::any MiniCCSTVisitor::visitMultExp(MiniCParser::MultExpContext * ctx)
+{
+    // 识别的文法产生式：multExp : unaryExp (multOp unaryExp)*;
+
+    if (ctx->multOp().empty()) {
+
+        // 没有multOp运算符，则说明闭包识别为0，只识别了第一个非终结符unaryExp
+        return visitUnaryExp(ctx->unaryExp()[0]);
+    }
+
+    ast_node *left, *right;
+
+    // 存在multOp运算符，自
+    auto opsCtxVec = ctx->multOp();
+
+    // 有操作符，肯定会进循环，使得right设置正确的值
+    for (int k = 0; k < (int) opsCtxVec.size(); k++) {
+
+        // 获取运算符
+        ast_operator_type op = std::any_cast<ast_operator_type>(visitMultOp(opsCtxVec[k]));
+
+        if (k == 0) {
+
+            // 左操作数
+            left = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k]));
+        }
+
+        // 右操作数
+        right = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k + 1]));
+
+        // 新建结点作为下一个运算符的右操作符
+        left = ast_node::New(op, left, right, nullptr);
+    }
+
+    return left;
+}
+
 std::any MiniCCSTVisitor::visitAddExp(MiniCParser::AddExpContext * ctx)
 {
-    // 识别的文法产生式：addExp : unaryExp (addOp unaryExp)*;
+    // 识别的文法产生式：addExp : multExp (addOp multExp)*;
 
     if (ctx->addOp().empty()) {
 
-        // 没有addOp运算符，则说明闭包识别为0，只识别了第一个非终结符unaryExp
-        return visitUnaryExp(ctx->unaryExp()[0]);
+        // 没有addOp运算符，则说明闭包识别为0，只识别了第一个非终结符multExp
+        return visitMultExp(ctx->multExp()[0]);
     }
 
     ast_node *left, *right;
@@ -243,17 +280,30 @@ std::any MiniCCSTVisitor::visitAddExp(MiniCParser::AddExpContext * ctx)
         if (k == 0) {
 
             // 左操作数
-            left = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k]));
+            left = std::any_cast<ast_node *>(visitMultExp(ctx->multExp()[k]));
         }
 
         // 右操作数
-        right = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()[k + 1]));
+        right = std::any_cast<ast_node *>(visitMultExp(ctx->multExp()[k + 1]));
 
         // 新建结点作为下一个运算符的右操作符
         left = ast_node::New(op, left, right, nullptr);
     }
 
     return left;
+}
+
+std::any MiniCCSTVisitor::visitMultOp(MiniCParser::MultOpContext * ctx)
+{
+    // 识别的文法产生式：multOp : T_MUL | T_DIV | T_MOD
+
+    if (ctx->T_MUL()) {
+        return ast_operator_type::AST_OP_MUL;
+    } else if (ctx->T_DIV()) {
+        return ast_operator_type::AST_OP_DIV;
+    } else {
+        return ast_operator_type::AST_OP_MOD;
+    }
 }
 
 /// @brief 非终结运算符addOp的遍历

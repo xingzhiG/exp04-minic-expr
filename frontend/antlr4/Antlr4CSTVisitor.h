@@ -91,12 +91,26 @@ protected:
     ///
     std::any visitBlockStatement(MiniCParser::BlockStatementContext * ctx) override;
 
+	///
+	/// @brief 非终结符multOp的分析
+	/// @param ctx CST上下文
+	/// @return std::any AST的节点
+	///
+	std::any visitMultExp(MiniCParser::MultExpContext * ctx) override;
+
     ///
     /// @brief 非终结符AddExp的分析
     /// @param ctx CST上下文
     /// @return std::any AST的节点
     ///
     std::any visitAddExp(MiniCParser::AddExpContext * ctx) override;
+
+	///
+	/// @brief 非终结符multOp的分析
+	/// @param ctx CST上下文
+	/// @return std::any 类型
+	///
+	std::any visitMultOp(MiniCParser::MultOpContext * ctx) override;
 
     ///
     /// @brief 非终结符addOp的分析

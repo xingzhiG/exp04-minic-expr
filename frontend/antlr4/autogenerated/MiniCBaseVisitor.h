@@ -67,6 +67,14 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitMultExp(MiniCParser::MultExpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitMultOp(MiniCParser::MultOpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitAddExp(MiniCParser::AddExpContext *ctx) override {
     return visitChildren(ctx);
   }
