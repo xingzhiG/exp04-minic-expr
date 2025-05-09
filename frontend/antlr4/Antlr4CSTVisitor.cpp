@@ -302,13 +302,29 @@ std::any MiniCCSTVisitor::visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx)
     // 识别文法产生式 primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal;
 
     ast_node * node = nullptr;
-
+	/*
     if (ctx->T_DIGIT()) {
         // 无符号整型字面量
         // 识别 primaryExp: T_DIGIT
 
         uint32_t val = (uint32_t) stoull(ctx->T_DIGIT()->getText());
         int64_t lineNo = (int64_t) ctx->T_DIGIT()->getSymbol()->getLine();
+        node = ast_node::New(digit_int_attr{val, lineNo});
+		*/
+	if (ctx->T_OCTAL()) {
+        // 八进制字面量
+        uint32_t val = (uint32_t) stoull(ctx->T_OCTAL()->getText(), nullptr, 8);
+        int64_t lineNo = (int64_t) ctx->T_OCTAL()->getSymbol()->getLine();
+        node = ast_node::New(digit_int_attr{val, lineNo});
+    } else if (ctx->T_HEX()) {
+        // 十六进制字面量
+        uint32_t val = (uint32_t) stoull(ctx->T_HEX()->getText(), nullptr, 16);
+        int64_t lineNo = (int64_t) ctx->T_HEX()->getSymbol()->getLine();
+        node = ast_node::New(digit_int_attr{val, lineNo});
+    } else if (ctx->T_DECIMAL()) {
+        // 十进制字面量
+        uint32_t val = (uint32_t) stoull(ctx->T_DECIMAL()->getText());
+        int64_t lineNo = (int64_t) ctx->T_DECIMAL()->getSymbol()->getLine();
         node = ast_node::New(digit_int_attr{val, lineNo});
     } else if (ctx->lVal()) {
         // 具有左值的表达式

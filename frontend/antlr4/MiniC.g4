@@ -54,7 +54,12 @@ addOp: T_ADD | T_SUB;
 unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN;
 
 // 基本表达式：括号表达式、整数、左值表达式
-primaryExp: T_L_PAREN expr T_R_PAREN | T_DIGIT | lVal;
+primaryExp:
+	T_L_PAREN expr T_R_PAREN
+	| T_HEX
+	| T_OCTAL
+	| T_DECIMAL
+	| lVal;
 
 // 实参列表
 realParamList: expr (T_COMMA expr)*;
@@ -82,7 +87,10 @@ T_INT: 'int';
 T_VOID: 'void';
 
 T_ID: [a-zA-Z_][a-zA-Z0-9_]*;
-T_DIGIT: '0' | [1-9][0-9]*;
+// T_DIGIT: '0' | [1-9][0-9]*;
+T_HEX: '0' [xX] [0-9a-fA-F]+; // 十六进制，以0x或0X开头
+T_OCTAL: '0' [0-7]+; // 八进制，以0开头
+T_DECIMAL: '0' | [1-9][0-9]*; // 十进制
 
 /* 空白符丢弃 */
 WS: [ \r\n\t]+ -> skip;
