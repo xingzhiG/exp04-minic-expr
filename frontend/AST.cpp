@@ -277,6 +277,65 @@ ast_node * create_contain_node(ast_operator_type node_type,
     return node;
 }
 
+/// @brief 创建关系表达式节点（==, !=, <, >, <=, >=）
+/// @param op 节点类型
+/// @param left 左操作数
+/// @param right 右操作数
+/// @return 创建的关系表达式节点
+ast_node * create_relation_node(ast_operator_type op, ast_node * left, ast_node * right)
+{
+    return create_contain_node(op, left, right);
+}
+
+/// @brief 创建逻辑表达式节点（&&, ||, !）
+/// @param op 节点类型
+/// @param left 左操作数（用于 && 和 ||）
+/// @param right 右操作数（用于 && 和 ||）
+/// @return 创建的逻辑表达式节点
+ast_node * create_logic_node(ast_operator_type op, ast_node * left, ast_node * right)
+{
+    if (op == ast_operator_type::AST_OP_NOT) {
+        // 单目逻辑非
+        return create_contain_node(op, left);
+    } else {
+        // 双目逻辑与/或
+        return create_contain_node(op, left, right);
+    }
+}
+
+/// @brief 创建 if 语句节点
+/// @param cond 条件表达式
+/// @param then_body then 分支
+/// @param else_body else 分支（可选）
+/// @return 创建的 if 节点
+ast_node * create_if_node(ast_node * cond, ast_node * then_body, ast_node * else_body)
+{
+    return create_contain_node(ast_operator_type::AST_OP_IF, cond, then_body, else_body);
+}
+
+/// @brief 创建 while 循环节点
+/// @param cond 条件表达式
+/// @param body 循环体
+/// @return 创建的 while 节点
+ast_node * create_while_node(ast_node * cond, ast_node * body)
+{
+    return create_contain_node(ast_operator_type::AST_OP_WHILE, cond, body);
+}
+
+/// @brief 创建 break 语句节点
+/// @return 创建的 break 节点
+ast_node * create_break_node()
+{
+    return create_contain_node(ast_operator_type::AST_OP_BREAK);
+}
+
+/// @brief 创建 continue 语句节点
+/// @return 创建的 continue 节点
+ast_node * create_continue_node()
+{
+    return create_contain_node(ast_operator_type::AST_OP_CONTINUE);
+}
+
 Type * typeAttr2Type(type_attr & attr)
 {
     if (attr.type == BasicType::TYPE_INT) {

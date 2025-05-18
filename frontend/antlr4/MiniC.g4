@@ -34,15 +34,31 @@ basicType: T_INT;
 // 变量定义
 varDef: T_ID;
 
-// 目前语句支持return和赋值语句
+// 语句文法：扩展以支持条件语句和循环语句
 statement:
-	T_RETURN expr T_SEMICOLON			# returnStatement
-	| lVal T_ASSIGN expr T_SEMICOLON	# assignStatement
-	| block								# blockStatement
-	| expr? T_SEMICOLON					# expressionStatement;
+	T_RETURN expr T_SEMICOLON										# returnStatement
+	| lVal T_ASSIGN expr T_SEMICOLON								# assignStatement
+	| block															# blockStatement
+	| expr? T_SEMICOLON												# expressionStatement
+	| T_IF T_L_PAREN expr T_R_PAREN statement (T_ELSE statement)?	# ifStatement
+	| T_WHILE T_L_PAREN expr T_R_PAREN statement					# whileStatement
+	| T_BREAK T_SEMICOLON											# breakStatement
+	| T_CONTINUE T_SEMICOLON										# continueStatement;
 
-// 表达式文法 expr : AddExp 表达式目前只支持加法与减法运算
-expr: addExp;
+// 表达式文法：扩展以支持关系表达式和逻辑表达式
+expr: logicExp;
+
+// 逻辑表达式
+logicExp: relExp (logicOp relExp)*;
+
+// 关系表达式
+relExp: addExp (relOp addExp)*;
+
+// 关系运算符
+relOp: T_LT | T_GT | T_LE | T_GE | T_EQ | T_NE;
+
+// 逻辑运算符
+logicOp: T_AND | T_OR;
 
 // 乘除求余表达式
 multExp: unaryExp (multOp unaryExp)*;
@@ -56,11 +72,12 @@ addExp: multExp (addOp multExp)*;
 // 加减运算符
 addOp: T_ADD | T_SUB;
 
-// 一元表达式 一元表达式
+// 一元表达式
 unaryExp:
 	primaryExp
 	| T_ID T_L_PAREN realParamList? T_R_PAREN
-	| T_SUB unaryExp;
+	| T_SUB unaryExp
+	| T_NOT unaryExp; //支持逻辑非
 
 // 基本表达式：括号表达式、整数、左值表达式
 primaryExp:
@@ -92,6 +109,25 @@ T_SUB: '-';
 T_MUL: '*';
 T_DIV: '/';
 T_MOD: '%';
+
+// 增加关系表达式的词法规则
+
+T_LT: '<';
+T_GT: '>';
+T_LE: '<=';
+T_GE: '>=';
+T_EQ: '==';
+T_NE: '!=';
+T_AND: '&&';
+T_OR: '||';
+T_NOT: '!';
+
+// 增加 条件 if 与 循环 while 的词法规则
+T_IF: 'if';
+T_ELSE: 'else';
+T_WHILE: 'while';
+T_BREAK: 'break';
+T_CONTINUE: 'continue';
 
 // 要注意关键字同样也属于T_ID，因此必须放在T_ID的前面，否则会识别成T_ID
 T_RETURN: 'return';

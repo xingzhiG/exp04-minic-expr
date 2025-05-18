@@ -102,6 +102,45 @@ enum class ast_operator_type : int {
 	/// @brief 一元运算符-
 	AST_OP_NEG,
 
+	/// @brief 关系运算符等于（==）
+	AST_OP_EQ,
+
+	/// @brief 关系运算符不等于（!=）
+	AST_OP_NE,
+
+	/// @brief 关系运算符小于（<）
+	AST_OP_LT,
+
+	/// @brief 关系运算符大于（>）
+	AST_OP_GT,
+
+	/// @brief 关系运算符小于等于（<=）
+	AST_OP_LE,
+
+	/// @brief 关系运算符大于等于（>=）
+	AST_OP_GE,
+
+	/// @brief 逻辑与（&&）
+	AST_OP_AND,
+
+	/// @brief 逻辑或（||）
+	AST_OP_OR,
+
+	/// @brief 逻辑非（!）
+	AST_OP_NOT,
+
+	/// @brief 控制流：if 语句
+	AST_OP_IF,
+
+	/// @brief 控制流：while 循环
+	AST_OP_WHILE,
+
+	/// @brief 控制流：break 语句
+	AST_OP_BREAK,
+
+	/// @brief 控制流：continue 语句
+	AST_OP_CONTINUE,
+
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 };
@@ -227,6 +266,42 @@ ast_node * create_contain_node(ast_operator_type node_type,
                                ast_node * first_child = nullptr,
                                ast_node * second_child = nullptr,
                                ast_node * third_child = nullptr);
+
+
+/// @brief 创建关系表达式节点（==, !=, <, >, <=, >=）
+/// @param op 节点类型
+/// @param left 左操作数
+/// @param right 右操作数
+/// @return 创建的关系表达式节点
+ast_node * create_relation_node(ast_operator_type op, ast_node * left, ast_node * right);
+
+/// @brief 创建逻辑表达式节点（&&, ||, !）
+/// @param op 节点类型
+/// @param left 左操作数（用于 && 和 ||）
+/// @param right 右操作数（用于 && 和 ||）
+/// @return 创建的逻辑表达式节点
+ast_node * create_logic_node(ast_operator_type op, ast_node * left = nullptr, ast_node * right = nullptr);
+
+/// @brief 创建 if 语句节点
+/// @param cond 条件表达式
+/// @param then_body then 分支
+/// @param else_body else 分支（可选）
+/// @return 创建的 if 节点
+ast_node * create_if_node(ast_node * cond, ast_node * then_body, ast_node * else_body = nullptr);
+
+/// @brief 创建 while 循环节点
+/// @param cond 条件表达式
+/// @param body 循环体
+/// @return 创建的 while 节点
+ast_node * create_while_node(ast_node * cond, ast_node * body);
+
+/// @brief 创建 break 语句节点
+/// @return 创建的 break 节点
+ast_node * create_break_node();
+
+/// @brief 创建 continue 语句节点
+/// @return 创建的 continue 节点
+ast_node * create_continue_node();
 
 /// @brief 创建函数定义类型的内部AST节点
 /// @param type_node 函数返回值类型

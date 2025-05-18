@@ -72,6 +72,30 @@ protected:
     /// @return AST的节点
     std::any visitReturnStatement(MiniCParser::ReturnStatementContext * ctx) override;
 
+	///
+	/// @brief 非终结运算符ifStatement的遍历
+	/// @param ctx CST上下文
+	///
+	std::any visitIfStatement(MiniCParser::IfStatementContext * ctx) override;
+
+	///
+	/// @brief 非终结运算符whileStatement的遍历
+	/// @param ctx CST上下文
+	///
+	std::any visitWhileStatement(MiniCParser::WhileStatementContext * ctx) override;
+
+	///
+	/// @brief 非终结符breakStatement的分析
+	/// @param ctx CST上下文
+	///
+	std::any visitBreakStatement(MiniCParser::BreakStatementContext * ctx) override;
+
+	///
+	/// @brief 非终结符continueStatement的分析
+	/// @param ctx CST上下文
+	///
+	std::any visitContinueStatement(MiniCParser::ContinueStatementContext * ctx) override;
+
     /// @brief 非终结运算符expr的遍历
     /// @param ctx CST上下文
     /// @return AST的节点
@@ -90,6 +114,34 @@ protected:
     /// @return std::any AST的节点
     ///
     std::any visitBlockStatement(MiniCParser::BlockStatementContext * ctx) override;
+
+	///
+	/// @brief 非终结符logicExp的分析
+	/// @param ctx CST上下文
+	/// @return std::any AST的节点
+	///
+	std::any visitLogicExp(MiniCParser::LogicExpContext * ctx) override;
+
+	///
+	/// @brief 非终结符logicOp的分析
+	/// @param ctx CST上下文
+	/// @return std::any AST的节点
+	///
+	std::any visitLogicOp(MiniCParser::LogicOpContext * ctx) override;
+
+	///
+	/// @brief 非终结符relExp的分析
+	/// @param ctx CST上下文
+	/// @return std::any AST的节点
+	///
+	std::any visitRelExp(MiniCParser::RelExpContext * ctx) override;
+
+	///
+	/// @brief 非终结符relOp的分析
+	/// @param ctx CST上下文
+	/// @return std::any AST的节点
+	///
+	std::any visitRelOp(MiniCParser::RelOpContext * ctx) override;
 
 	///
 	/// @brief 非终结符multOp的分析
