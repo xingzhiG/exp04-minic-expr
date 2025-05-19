@@ -253,26 +253,29 @@ std::any MiniCCSTVisitor::visitExpr(MiniCParser::ExprContext * ctx) {
 }
 
 std::any MiniCCSTVisitor::visitLogicExp(MiniCParser::LogicExpContext * ctx) {
-    if (ctx->relExp().empty()) {
+    // 获取关系表达式列表
+    auto relExps = ctx->relExp();
+    if (relExps.empty()) {
         return nullptr;
     }
 
-    ast_node *left = nullptr, *right = nullptr;
+    // 构建第一个关系表达式作为左操作数
+    ast_node *left = std::any_cast<ast_node *>(visitRelExp(relExps[0]));
 
-    for (size_t i = 0; i < ctx->relExp().size(); ++i) {
-        auto relExp = ctx->relExp(i);
+    // 遍历所有逻辑运算符和对应的关系表达式
+    for (size_t i = 0; i < ctx->logicOp().size(); ++i) {
+        // 获取逻辑运算符上下文并解析出操作类型
         auto opCtx = ctx->logicOp(i);
-
         ast_operator_type op = std::any_cast<ast_operator_type>(visitLogicOp(opCtx));
 
-        if (i == 0) {
-            left = std::any_cast<ast_node *>(visitRelExp(relExp));
-        }
+        // 获取右侧的关系表达式并解析出节点
+        ast_node *right = std::any_cast<ast_node *>(visitRelExp(relExps[i + 1]));
 
-        right = std::any_cast<ast_node *>(visitRelExp(relExp));
+        // 创建新的中间节点作为当前逻辑运算的结果
         left = ast_node::New(op, left, right, nullptr);
     }
 
+    // 返回最终构建好的逻辑表达式树
     return left;
 }
 
