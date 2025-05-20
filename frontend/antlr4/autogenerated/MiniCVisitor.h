@@ -1,5 +1,5 @@
 
-// Generated from /home/code/exp/exp04-minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -53,7 +53,9 @@ public:
 
     virtual std::any visitExpr(MiniCParser::ExprContext *context) = 0;
 
-    virtual std::any visitLogicExp(MiniCParser::LogicExpContext *context) = 0;
+    virtual std::any visitOrExp(MiniCParser::OrExpContext *context) = 0;
+
+    virtual std::any visitAndExp(MiniCParser::AndExpContext *context) = 0;
 
     virtual std::any visitRelExp(MiniCParser::RelExpContext *context) = 0;
 

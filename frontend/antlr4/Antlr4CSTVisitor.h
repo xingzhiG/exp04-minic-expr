@@ -116,18 +116,18 @@ protected:
     std::any visitBlockStatement(MiniCParser::BlockStatementContext * ctx) override;
 
 	///
-	/// @brief 非终结符logicExp的分析
+	/// @brief 非终结符orExp的分析
 	/// @param ctx CST上下文
 	/// @return std::any AST的节点
 	///
-	std::any visitLogicExp(MiniCParser::LogicExpContext * ctx) override;
+	std::any visitOrExp(MiniCParser::OrExpContext * ctx) override;
 
 	///
-	/// @brief 非终结符logicOp的分析
+	/// @brief 非终结符andExp的分析
 	/// @param ctx CST上下文
 	/// @return std::any AST的节点
 	///
-	std::any visitLogicOp(MiniCParser::LogicOpContext * ctx) override;
+	std::any visitAndExp(MiniCParser::AndExpContext * ctx) override;
 
 	///
 	/// @brief 非终结符relExp的分析

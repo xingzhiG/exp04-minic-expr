@@ -1,5 +1,5 @@
 
-// Generated from /home/code/exp/exp04-minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -83,7 +83,11 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual std::any visitLogicExp(MiniCParser::LogicExpContext *ctx) override {
+  virtual std::any visitOrExp(MiniCParser::OrExpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitAndExp(MiniCParser::AndExpContext *ctx) override {
     return visitChildren(ctx);
   }
 

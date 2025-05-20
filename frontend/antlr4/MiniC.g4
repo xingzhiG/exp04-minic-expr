@@ -46,10 +46,13 @@ statement:
 	| T_CONTINUE T_SEMICOLON										# continueStatement;
 
 // 表达式文法：扩展以支持关系表达式和逻辑表达式
-expr: logicExp;
+expr: orExp;
 
-// 逻辑表达式
-logicExp: relExp (logicOp relExp)*;
+// 逻辑或表达式
+orExp: andExp (T_OR andExp)*;
+
+// 逻辑与表达式
+andExp: relExp (T_AND relExp)*;
 
 // 关系表达式
 relExp: addExp (relOp addExp)*;

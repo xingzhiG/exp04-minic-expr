@@ -1,5 +1,5 @@
 
-// Generated from /home/code/exp/exp04-minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -24,10 +24,10 @@ public:
   enum {
     RuleCompileUnit = 0, RuleFuncDef = 1, RuleBlock = 2, RuleBlockItemList = 3, 
     RuleBlockItem = 4, RuleVarDecl = 5, RuleBasicType = 6, RuleVarDef = 7, 
-    RuleStatement = 8, RuleExpr = 9, RuleLogicExp = 10, RuleRelExp = 11, 
-    RuleRelOp = 12, RuleLogicOp = 13, RuleMultExp = 14, RuleMultOp = 15, 
-    RuleAddExp = 16, RuleAddOp = 17, RuleUnaryExp = 18, RulePrimaryExp = 19, 
-    RuleRealParamList = 20, RuleLVal = 21
+    RuleStatement = 8, RuleExpr = 9, RuleOrExp = 10, RuleAndExp = 11, RuleRelExp = 12, 
+    RuleRelOp = 13, RuleLogicOp = 14, RuleMultExp = 15, RuleMultOp = 16, 
+    RuleAddExp = 17, RuleAddOp = 18, RuleUnaryExp = 19, RulePrimaryExp = 20, 
+    RuleRealParamList = 21, RuleLVal = 22
   };
 
   explicit MiniCParser(antlr4::TokenStream *input);
@@ -57,7 +57,8 @@ public:
   class VarDefContext;
   class StatementContext;
   class ExprContext;
-  class LogicExpContext;
+  class OrExpContext;
+  class AndExpContext;
   class RelExpContext;
   class RelOpContext;
   class LogicOpContext;
@@ -300,7 +301,7 @@ public:
   public:
     ExprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    LogicExpContext *logicExp();
+    OrExpContext *orExp();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -309,21 +310,37 @@ public:
 
   ExprContext* expr();
 
-  class  LogicExpContext : public antlr4::ParserRuleContext {
+  class  OrExpContext : public antlr4::ParserRuleContext {
   public:
-    LogicExpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    OrExpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    std::vector<RelExpContext *> relExp();
-    RelExpContext* relExp(size_t i);
-    std::vector<LogicOpContext *> logicOp();
-    LogicOpContext* logicOp(size_t i);
+    std::vector<AndExpContext *> andExp();
+    AndExpContext* andExp(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> T_OR();
+    antlr4::tree::TerminalNode* T_OR(size_t i);
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
    
   };
 
-  LogicExpContext* logicExp();
+  OrExpContext* orExp();
+
+  class  AndExpContext : public antlr4::ParserRuleContext {
+  public:
+    AndExpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<RelExpContext *> relExp();
+    RelExpContext* relExp(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> T_AND();
+    antlr4::tree::TerminalNode* T_AND(size_t i);
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  AndExpContext* andExp();
 
   class  RelExpContext : public antlr4::ParserRuleContext {
   public:

@@ -809,13 +809,13 @@ bool IRGenerator::ir_and(ast_node * node) {
     // 右操作数入口label
     LabelInstruction * rightLabel = new LabelInstruction(func);
 
-    // 左操作数
+    // 左操作数：为真则跳到右操作数，为假则直接跳到falseLabel
     node->sons[0]->trueLabel = rightLabel;
     node->sons[0]->falseLabel = node->falseLabel;
     ir_visit_ast_node(node->sons[0]);
     node->blockInsts.addInst(node->sons[0]->blockInsts);
 
-    // 右操作数
+    // 右操作数：为真则跳到整个and的trueLabel，为假则跳到整个and的falseLabel
     node->blockInsts.addInst(rightLabel);
     node->sons[1]->trueLabel = node->trueLabel;
     node->sons[1]->falseLabel = node->falseLabel;
@@ -832,13 +832,13 @@ bool IRGenerator::ir_or(ast_node * node) {
     // 右操作数入口label
     LabelInstruction * rightLabel = new LabelInstruction(func);
 
-    // 左操作数
+    // 左操作数：为真则直接跳到trueLabel，为假则跳到右操作数
     node->sons[0]->trueLabel = node->trueLabel;
     node->sons[0]->falseLabel = rightLabel;
     ir_visit_ast_node(node->sons[0]);
     node->blockInsts.addInst(node->sons[0]->blockInsts);
 
-    // 右操作数
+    // 右操作数：为真则跳到整个or的trueLabel，为假则跳到整个or的falseLabel
     node->blockInsts.addInst(rightLabel);
     node->sons[1]->trueLabel = node->trueLabel;
     node->sons[1]->falseLabel = node->falseLabel;
@@ -850,10 +850,26 @@ bool IRGenerator::ir_or(ast_node * node) {
 
 // 逻辑非 !（只需交换真/假出口label）
 bool IRGenerator::ir_not(ast_node * node) {
-    node->sons[0]->trueLabel = node->falseLabel;
-    node->sons[0]->falseLabel = node->trueLabel;
-    ir_visit_ast_node(node->sons[0]);
-    node->blockInsts.addInst(node->sons[0]->blockInsts);
+    // 短路模式：翻转真/假label
+    if (node->trueLabel && node->falseLabel) {
+        node->sons[0]->trueLabel = node->falseLabel;
+        node->sons[0]->falseLabel = node->trueLabel;
+        ir_visit_ast_node(node->sons[0]);
+        node->blockInsts.addInst(node->sons[0]->blockInsts);
+        node->val = nullptr;
+        return true;
+    }
+
+    // 普通模式：生成 icmp eq x, 0
+    ast_node * operand = ir_visit_ast_node(node->sons[0]);
+    if (!operand) return false;
+
+    // 生成与0比较的指令（假设只支持整型）
+    BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
+        IRInstOperator::IRINST_OP_EQ, operand->val, module->newConstInt(0), IntegerType::getTypeBool());
+    node->blockInsts.addInst(operand->blockInsts);
+    node->blockInsts.addInst(eqInst);
+    node->val = eqInst;
     return true;
 }
 

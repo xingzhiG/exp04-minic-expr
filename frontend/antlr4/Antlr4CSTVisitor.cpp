@@ -248,44 +248,28 @@ std::any MiniCCSTVisitor::visitContinueStatement(MiniCParser::ContinueStatementC
 /// @brief 非终结运算符expr的遍历
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitExpr(MiniCParser::ExprContext * ctx) {
-	// expr -> logicExp
-	return visitLogicExp(ctx->logicExp());
+	// expr -> orExp
+	return visitOrExp(ctx->orExp());
 }
 
-std::any MiniCCSTVisitor::visitLogicExp(MiniCParser::LogicExpContext * ctx) {
-    // 获取关系表达式列表
-    auto relExps = ctx->relExp();
-    if (relExps.empty()) {
-        return nullptr;
+// orExp: andExp (T_OR andExp)*;
+std::any MiniCCSTVisitor::visitOrExp(MiniCParser::OrExpContext * ctx) {
+    ast_node *left = std::any_cast<ast_node *>(visitAndExp(ctx->andExp(0)));
+    for (size_t i = 1; i < ctx->andExp().size(); ++i) {
+        ast_node *right = std::any_cast<ast_node *>(visitAndExp(ctx->andExp(i)));
+        left = ast_node::New(ast_operator_type::AST_OP_OR, left, right, nullptr);
     }
-
-    // 构建第一个关系表达式作为左操作数
-    ast_node *left = std::any_cast<ast_node *>(visitRelExp(relExps[0]));
-
-    // 遍历所有逻辑运算符和对应的关系表达式
-    for (size_t i = 0; i < ctx->logicOp().size(); ++i) {
-        // 获取逻辑运算符上下文并解析出操作类型
-        auto opCtx = ctx->logicOp(i);
-        ast_operator_type op = std::any_cast<ast_operator_type>(visitLogicOp(opCtx));
-
-        // 获取右侧的关系表达式并解析出节点
-        ast_node *right = std::any_cast<ast_node *>(visitRelExp(relExps[i + 1]));
-
-        // 创建新的中间节点作为当前逻辑运算的结果
-        left = ast_node::New(op, left, right, nullptr);
-    }
-
-    // 返回最终构建好的逻辑表达式树
     return left;
 }
 
-std::any MiniCCSTVisitor::visitLogicOp(MiniCParser::LogicOpContext * ctx) {
-    if (ctx->T_AND()) {
-        return ast_operator_type::AST_OP_AND;
-    } else if (ctx->T_OR()) {
-        return ast_operator_type::AST_OP_OR;
+// andExp: relExp (T_AND relExp)*;
+std::any MiniCCSTVisitor::visitAndExp(MiniCParser::AndExpContext * ctx) {
+    ast_node *left = std::any_cast<ast_node *>(visitRelExp(ctx->relExp(0)));
+    for (size_t i = 1; i < ctx->relExp().size(); ++i) {
+        ast_node *right = std::any_cast<ast_node *>(visitRelExp(ctx->relExp(i)));
+        left = ast_node::New(ast_operator_type::AST_OP_AND, left, right, nullptr);
     }
-    return nullptr;
+    return left;
 }
 
 std::any MiniCCSTVisitor::visitAssignStatement(MiniCParser::AssignStatementContext * ctx)
@@ -453,7 +437,7 @@ std::any MiniCCSTVisitor::visitRelOp(MiniCParser::RelOpContext * ctx) {
 
 std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
 {
-    // 识别文法产生式：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN | T_SUB unaryExp;
+    // 识别文法产生式：unaryExp: primaryExp | T_ID T_L_PAREN realParamList? T_R_PAREN | T_SUB unaryExp | T_NOT unaryExp;
 
     if (ctx->primaryExp()) {
         // 普通表达式
@@ -477,6 +461,10 @@ std::any MiniCCSTVisitor::visitUnaryExp(MiniCParser::UnaryExpContext * ctx)
         // 单目运算符求负
         ast_node * operand = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()));
         return ast_node::New(ast_operator_type::AST_OP_NEG, operand, nullptr, nullptr);
+    } else if (ctx->T_NOT()) {
+        // 单目逻辑非
+        ast_node * operand = std::any_cast<ast_node *>(visitUnaryExp(ctx->unaryExp()));
+        return ast_node::New(ast_operator_type::AST_OP_NOT, operand, nullptr, nullptr);
     } else {
         return nullptr;
     }
