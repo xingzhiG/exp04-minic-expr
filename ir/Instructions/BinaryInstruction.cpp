@@ -72,37 +72,37 @@ void BinaryInstruction::toString(std::string & str)
 		case IRInstOperator::IRINST_OP_EQ:
 
 			// 等于指令，二元运算
-			str = getIRName() + " = eq " + src1->getIRName() + "," + src2->getIRName();
+			str = getIRName() + " = icmp eq " + src1->getIRName() + "," + src2->getIRName();
 			break;
 
 		case IRInstOperator::IRINST_OP_NE:
 
 			// 不等于指令，二元运算
-			str = getIRName() + " = ne " + src1->getIRName() + "," + src2->getIRName();
+			str = getIRName() + " = icmp ne " + src1->getIRName() + "," + src2->getIRName();
 			break;
 
 		case IRInstOperator::IRINST_OP_LT:
 
 			// 小于指令，二元运算
-			str = getIRName() + " = lt " + src1->getIRName() + "," + src2->getIRName();
+			str = getIRName() + " = icmp lt " + src1->getIRName() + "," + src2->getIRName();
 			break;
 
 		case IRInstOperator::IRINST_OP_LE:
 
 			// 小于等于指令，二元运算
-			str = getIRName() + " = le " + src1->getIRName() + "," + src2->getIRName();
+			str = getIRName() + " = icmp le " + src1->getIRName() + "," + src2->getIRName();
 			break;
 
 		case IRInstOperator::IRINST_OP_GT:
 
 			// 大于指令，二元运算
-			str = getIRName() + " = gt " + src1->getIRName() + "," + src2->getIRName();
+			str = getIRName() + " = icmp gt " + src1->getIRName() + "," + src2->getIRName();
 			break;
 
 		case IRInstOperator::IRINST_OP_GE:
 
 			// 大于等于指令，二元运算
-			str = getIRName() + " = ge " + src1->getIRName() + "," + src2->getIRName();
+			str = getIRName() + " = icmp ge " + src1->getIRName() + "," + src2->getIRName();
 			break;
 
 		case IRInstOperator::IRINST_OP_AND:

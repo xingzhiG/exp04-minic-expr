@@ -682,7 +682,7 @@ bool IRGenerator::ir_eq(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_EQ, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_EQ, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(eqInst);
@@ -696,7 +696,7 @@ bool IRGenerator::ir_ne(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * neInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_NE, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_NE, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(neInst);
@@ -710,7 +710,7 @@ bool IRGenerator::ir_lt(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * ltInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_LT, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_LT, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(ltInst);
@@ -724,7 +724,7 @@ bool IRGenerator::ir_le(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * leInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_LE, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_LE, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(leInst);
@@ -738,7 +738,7 @@ bool IRGenerator::ir_gt(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * gtInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_GT, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_GT, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(gtInst);
@@ -752,7 +752,7 @@ bool IRGenerator::ir_ge(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * geInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_GE, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_GE, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(geInst);
@@ -766,7 +766,7 @@ bool IRGenerator::ir_and(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * andInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_AND, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_AND, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(andInst);
@@ -780,7 +780,7 @@ bool IRGenerator::ir_or(ast_node * node) {
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
     BinaryInstruction * orInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_OR, left->val, right->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_OR, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(orInst);
@@ -793,7 +793,7 @@ bool IRGenerator::ir_not(ast_node * node) {
     ast_node * operand = ir_visit_ast_node(node->sons[0]);
     if (!operand) return false;
     UnaryInstruction * notInst = new UnaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_NOT, operand->val, IntegerType::getTypeInt());
+        IRInstOperator::IRINST_OP_NOT, operand->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(operand->blockInsts);
     node->blockInsts.addInst(notInst);
     node->val = notInst;
