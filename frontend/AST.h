@@ -26,6 +26,7 @@
 #include "Value.h"
 #include "VoidType.h"
 #include "ir/Instruction.h"
+#include "ir/Instructions/LabelInstruction.h"
 
 ///
 /// @brief AST节点的类型。C++专门因为枚举类来区分C语言的结构体
@@ -194,6 +195,10 @@ public:
 
     /// @brief IR生成时用到的continue目标标签
     Instruction * continueLabel = nullptr;
+
+	// 用于逻辑表达式短路求值的继承属性
+    LabelInstruction * trueLabel = nullptr;  // 真出口label
+    LabelInstruction * falseLabel = nullptr; // 假出口label
 
     /// @brief 创建指定节点类型的节点
     /// @param _node_type 节点类型

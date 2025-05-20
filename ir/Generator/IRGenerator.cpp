@@ -681,12 +681,19 @@ bool IRGenerator::ir_eq(ast_node * node) {
     ast_node * left = ir_visit_ast_node(node->sons[0]);
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
+
     BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
         IRInstOperator::IRINST_OP_EQ, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(eqInst);
-    node->val = eqInst;
+
+    node->val = eqInst; // 始终设置 val
+
+    if (node->trueLabel && node->falseLabel) {
+        node->blockInsts.addInst(new BranchCondInstruction(
+            module->getCurrentFunction(), eqInst, node->trueLabel, node->falseLabel));
+    }
     return true;
 }
 
@@ -695,12 +702,19 @@ bool IRGenerator::ir_ne(ast_node * node) {
     ast_node * left = ir_visit_ast_node(node->sons[0]);
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
+
     BinaryInstruction * neInst = new BinaryInstruction(module->getCurrentFunction(),
         IRInstOperator::IRINST_OP_NE, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(neInst);
+
     node->val = neInst;
+
+    if (node->trueLabel && node->falseLabel) {
+        node->blockInsts.addInst(new BranchCondInstruction(
+            module->getCurrentFunction(), neInst, node->trueLabel, node->falseLabel));
+    }
     return true;
 }
 
@@ -709,12 +723,19 @@ bool IRGenerator::ir_lt(ast_node * node) {
     ast_node * left = ir_visit_ast_node(node->sons[0]);
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
+
     BinaryInstruction * ltInst = new BinaryInstruction(module->getCurrentFunction(),
         IRInstOperator::IRINST_OP_LT, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(ltInst);
+
     node->val = ltInst;
+
+    if (node->trueLabel && node->falseLabel) {
+        node->blockInsts.addInst(new BranchCondInstruction(
+            module->getCurrentFunction(), ltInst, node->trueLabel, node->falseLabel));
+    }
     return true;
 }
 
@@ -723,12 +744,19 @@ bool IRGenerator::ir_le(ast_node * node) {
     ast_node * left = ir_visit_ast_node(node->sons[0]);
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
+
     BinaryInstruction * leInst = new BinaryInstruction(module->getCurrentFunction(),
         IRInstOperator::IRINST_OP_LE, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(leInst);
+
     node->val = leInst;
+
+    if (node->trueLabel && node->falseLabel) {
+        node->blockInsts.addInst(new BranchCondInstruction(
+            module->getCurrentFunction(), leInst, node->trueLabel, node->falseLabel));
+    }
     return true;
 }
 
@@ -737,12 +765,19 @@ bool IRGenerator::ir_gt(ast_node * node) {
     ast_node * left = ir_visit_ast_node(node->sons[0]);
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
+
     BinaryInstruction * gtInst = new BinaryInstruction(module->getCurrentFunction(),
         IRInstOperator::IRINST_OP_GT, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(gtInst);
+
     node->val = gtInst;
+
+    if (node->trueLabel && node->falseLabel) {
+        node->blockInsts.addInst(new BranchCondInstruction(
+            module->getCurrentFunction(), gtInst, node->trueLabel, node->falseLabel));
+    }
     return true;
 }
 
@@ -751,53 +786,82 @@ bool IRGenerator::ir_ge(ast_node * node) {
     ast_node * left = ir_visit_ast_node(node->sons[0]);
     ast_node * right = ir_visit_ast_node(node->sons[1]);
     if (!left || !right) return false;
+
     BinaryInstruction * geInst = new BinaryInstruction(module->getCurrentFunction(),
         IRInstOperator::IRINST_OP_GE, left->val, right->val, IntegerType::getTypeBool());
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(geInst);
+
     node->val = geInst;
+
+    if (node->trueLabel && node->falseLabel) {
+        node->blockInsts.addInst(new BranchCondInstruction(
+            module->getCurrentFunction(), geInst, node->trueLabel, node->falseLabel));
+    }
     return true;
 }
 
-// 逻辑与 &&
+// 逻辑与 && 短路求值
 bool IRGenerator::ir_and(ast_node * node) {
-    ast_node * left = ir_visit_ast_node(node->sons[0]);
-    ast_node * right = ir_visit_ast_node(node->sons[1]);
-    if (!left || !right) return false;
-    BinaryInstruction * andInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_AND, left->val, right->val, IntegerType::getTypeBool());
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(andInst);
-    node->val = andInst;
+    // 父节点应已设置 node->trueLabel 和 node->falseLabel
+    Function * func = module->getCurrentFunction();
+    // 右操作数入口label
+    LabelInstruction * rightLabel = new LabelInstruction(func);
+
+    // 左操作数
+    node->sons[0]->trueLabel = rightLabel;
+    node->sons[0]->falseLabel = node->falseLabel;
+    ir_visit_ast_node(node->sons[0]);
+    node->blockInsts.addInst(node->sons[0]->blockInsts);
+
+    // 右操作数
+    node->blockInsts.addInst(rightLabel);
+    node->sons[1]->trueLabel = node->trueLabel;
+    node->sons[1]->falseLabel = node->falseLabel;
+    ir_visit_ast_node(node->sons[1]);
+    node->blockInsts.addInst(node->sons[1]->blockInsts);
+
     return true;
 }
 
-// 逻辑或 ||
+// 逻辑或 || 短路求值
 bool IRGenerator::ir_or(ast_node * node) {
-    ast_node * left = ir_visit_ast_node(node->sons[0]);
-    ast_node * right = ir_visit_ast_node(node->sons[1]);
-    if (!left || !right) return false;
-    BinaryInstruction * orInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_OR, left->val, right->val, IntegerType::getTypeBool());
-    node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(right->blockInsts);
-    node->blockInsts.addInst(orInst);
-    node->val = orInst;
+    // 父节点应已设置 node->trueLabel 和 node->falseLabel
+    Function * func = module->getCurrentFunction();
+    // 右操作数入口label
+    LabelInstruction * rightLabel = new LabelInstruction(func);
+
+    // 左操作数
+    node->sons[0]->trueLabel = node->trueLabel;
+    node->sons[0]->falseLabel = rightLabel;
+    ir_visit_ast_node(node->sons[0]);
+    node->blockInsts.addInst(node->sons[0]->blockInsts);
+
+    // 右操作数
+    node->blockInsts.addInst(rightLabel);
+    node->sons[1]->trueLabel = node->trueLabel;
+    node->sons[1]->falseLabel = node->falseLabel;
+    ir_visit_ast_node(node->sons[1]);
+    node->blockInsts.addInst(node->sons[1]->blockInsts);
+
     return true;
 }
 
-// 逻辑非 !
+// 逻辑非 !（只需交换真/假出口label）
 bool IRGenerator::ir_not(ast_node * node) {
-    ast_node * operand = ir_visit_ast_node(node->sons[0]);
-    if (!operand) return false;
-    UnaryInstruction * notInst = new UnaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_NOT, operand->val, IntegerType::getTypeBool());
-    node->blockInsts.addInst(operand->blockInsts);
-    node->blockInsts.addInst(notInst);
-    node->val = notInst;
+    node->sons[0]->trueLabel = node->falseLabel;
+    node->sons[0]->falseLabel = node->trueLabel;
+    ir_visit_ast_node(node->sons[0]);
+    node->blockInsts.addInst(node->sons[0]->blockInsts);
     return true;
+}
+
+/// @brief 辅助函数，判断是否为逻辑表达式
+static bool is_logic_expr(ast_node * node) {
+    return node->node_type == ast_operator_type::AST_OP_AND ||
+           node->node_type == ast_operator_type::AST_OP_OR ||
+           node->node_type == ast_operator_type::AST_OP_NOT;
 }
 
 /// @brief if/if-else语句翻译成线性中间IR
@@ -805,19 +869,27 @@ bool IRGenerator::ir_not(ast_node * node) {
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_if(ast_node * node)
 {
-    // 假设sons[0]为条件，sons[1]为then分支，sons[2]为else分支（可选）
-    ast_node * cond_node = ir_visit_ast_node(node->sons[0]);
-    if (!cond_node) return false;
-
     Function * func = module->getCurrentFunction();
 
     LabelInstruction * label_true = new LabelInstruction(func);
     LabelInstruction * label_false = new LabelInstruction(func);
     LabelInstruction * label_end = new LabelInstruction(func);
 
-    // 条件跳转
+    ast_node * cond_node = node->sons[0];
+    // 只对逻辑表达式传递label
+    if (is_logic_expr(cond_node)) {
+        cond_node->trueLabel = label_true;
+        cond_node->falseLabel = label_false;
+    }
+    cond_node = ir_visit_ast_node(cond_node);
+    if (!cond_node) return false;
+
     node->blockInsts.addInst(cond_node->blockInsts);
-    node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_true, label_false));
+
+    // 只有非逻辑表达式才生成 BranchCondInstruction
+    if (!is_logic_expr(cond_node) && cond_node->val) {
+        node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_true, label_false));
+    }
 
     // then分支
     node->blockInsts.addInst(label_true);
@@ -852,18 +924,15 @@ void IRGenerator::set_enclosing_loop(ast_node * node, ast_node * loop_node) {
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_while(ast_node * node)
 {
-    // 假设sons[0]为条件，sons[1]为循环体
     Function * func = module->getCurrentFunction();
 
     LabelInstruction * label_cond = new LabelInstruction(func);
     LabelInstruction * label_body = new LabelInstruction(func);
     LabelInstruction * label_end = new LabelInstruction(func);
 
-    // 用于break/continue的上下文管理（可用栈实现嵌套）
     node->breakLabel = label_end;
     node->continueLabel = label_cond;
 
-    // 递归设置循环体及其所有子节点的 enclosingLoop
     if (node->sons.size() > 1 && node->sons[1]) {
         set_enclosing_loop(node->sons[1], node);
     }
@@ -871,10 +940,18 @@ bool IRGenerator::ir_while(ast_node * node)
     node->blockInsts.addInst(new GotoInstruction(func, label_cond));
     node->blockInsts.addInst(label_cond);
 
-    ast_node * cond_node = ir_visit_ast_node(node->sons[0]);
+    ast_node * cond_node = node->sons[0];
+    if (is_logic_expr(cond_node)) {
+        cond_node->trueLabel = label_body;
+        cond_node->falseLabel = label_end;
+    }
+    cond_node = ir_visit_ast_node(cond_node);
     if (!cond_node) return false;
     node->blockInsts.addInst(cond_node->blockInsts);
-    node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_body, label_end));
+
+    if (!is_logic_expr(cond_node) && cond_node->val) {
+        node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_body, label_end));
+    }
 
     node->blockInsts.addInst(label_body);
     ast_node * body_node = ir_visit_ast_node(node->sons[1]);
