@@ -41,6 +41,11 @@ void UnaryInstruction::toString(std::string & str)
             str = getIRName() + " = neg " + src->getIRName();
             break;
 
+		case IRInstOperator::IRINST_OP_NOT:
+			// 取反指令，单目运算
+			str = getIRName() + " = not " + src->getIRName();
+			break;
+
         default:
             // 未知指令
             Instruction::toString(str);

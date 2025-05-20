@@ -62,6 +62,47 @@ enum class IRInstOperator : std::int8_t {
     IRINST_OP_ARG,
 
     /* 后续可追加其他的IR指令 */
+	/// @brief 关系运算：等于 (==)
+	IRINST_OP_EQ,
+
+	/// @brief 关系运算：不等于 (!=)
+	IRINST_OP_NE,
+
+	/// @brief 关系运算：小于 (<)
+	IRINST_OP_LT,
+
+	/// @brief 关系运算：小于等于 (<=)
+	IRINST_OP_LE,
+
+	/// @brief 关系运算：大于 (>)
+	IRINST_OP_GT,
+
+	/// @brief 关系运算：大于等于 (>=)
+	IRINST_OP_GE,
+
+	/// @brief 逻辑与 (&&)
+	IRINST_OP_AND,
+
+	/// @brief 逻辑或 (||)
+	IRINST_OP_OR,
+
+	/// @brief 逻辑非 (!)
+	IRINST_OP_NOT,
+
+	/// @brief 条件跳转指令
+	IRINST_OP_BRANCH_COND,
+
+	/// @brief IF语句指令
+	IRINST_OP_IF,
+
+	/// @brief WHILE语句指令
+	IRINST_OP_WHILE,
+
+	/// @brief 循环break指令
+	IRINST_OP_BREAK,
+
+	/// @brief 循环continue指令
+	sIRINST_OP_CONTINUE,
 
     /// @brief 最大指令码，也是无效指令
     IRINST_OP_MAX

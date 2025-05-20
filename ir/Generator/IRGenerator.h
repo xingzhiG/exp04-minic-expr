@@ -92,6 +92,74 @@ protected:
 	/// @return 翻译是否成功，true：成功，false：失败
 	bool ir_mod(ast_node * node);
 
+	/// @brief 等于 == AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_eq(ast_node * node);
+
+	/// @brief 不等于 != AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_ne(ast_node * node);
+
+	/// @brief 小于 < AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_lt(ast_node * node);
+
+	/// @brief 小于等于 <= AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_le(ast_node * node);
+
+	/// @brief 大于 > AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_gt(ast_node * node);
+
+	/// @brief 大于等于 >= AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_ge(ast_node * node);
+
+	/// @brief 逻辑与 && AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_and(ast_node * node);
+
+	/// @brief 逻辑或 || AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_or(ast_node * node);
+
+	/// @brief 逻辑非 ! AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_not(ast_node * node);
+
+	/// @brief if语句AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_if(ast_node * node);
+
+	/// @brief 辅助函数，设置当前节点的循环体
+    void set_enclosing_loop(ast_node * node, ast_node * loop_node);	
+
+	/// @brief while语句AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_while(ast_node * node);
+
+	/// @brief break语句AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_break(ast_node * node);
+
+	/// @brief continue语句AST节点翻译成线性中间IR
+	/// @param node AST节点
+	/// @return 翻译是否成功，true：成功，false：失败
+	bool ir_continue(ast_node * node);
+
     /// @brief 赋值AST节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败

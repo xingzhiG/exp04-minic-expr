@@ -25,6 +25,7 @@
 #include "IRCode.h"
 #include "Value.h"
 #include "VoidType.h"
+#include "ir/Instruction.h"
 
 ///
 /// @brief AST节点的类型。C++专门因为枚举类来区分C语言的结构体
@@ -184,6 +185,15 @@ public:
     /// @brief 在进入block等节点时是否要进行作用域管理。默认要做。
     ///
     bool needScope = true;
+
+	/// @brief 指向最近的循环节点（用于 break/continue）
+	ast_node * enclosingLoop = nullptr;
+
+	/// @brief IR生成时用到的break目标标签
+    Instruction * breakLabel = nullptr;
+
+    /// @brief IR生成时用到的continue目标标签
+    Instruction * continueLabel = nullptr;
 
     /// @brief 创建指定节点类型的节点
     /// @param _node_type 节点类型
