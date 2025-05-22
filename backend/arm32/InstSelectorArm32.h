@@ -68,6 +68,15 @@ protected:
     /// @param inst IR指令
     void translate_goto(Instruction * inst);
 
+	/// @brief 条件分支指令翻译成ARM32汇编
+	void translate_branch_cond(Instruction * inst);
+
+	/// @brief break语句翻译成ARM32汇编
+	void translate_break(Instruction * inst);
+
+	/// @brief continue语句翻译成ARM32汇编
+	void translate_continue(Instruction * inst);
+
     /// @brief 整数加法指令翻译成ARM32汇编
     /// @param inst IR指令
     void translate_add_int32(Instruction * inst);
@@ -96,6 +105,35 @@ protected:
 	/// @brief 整数取负指令翻译成ARM32汇编
 	/// @param inst IR指令
 	void translate_neg_int32(Instruction * inst);
+
+	/// @brief 整数关系运算指令翻译成ARM32汇编(统一处理函数)
+    /// @param inst IR指令
+    /// @param condition ARM的条件码(eq,ne,lt,gt,le,ge)
+    void translate_cmp_int32(Instruction * inst, const string& condition);
+
+    /// @brief 整数小于指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_lt_int32(Instruction * inst);
+
+    /// @brief 整数大于指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_gt_int32(Instruction * inst);
+
+    /// @brief 整数小于等于指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_le_int32(Instruction * inst);
+
+    /// @brief 整数大于等于指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_ge_int32(Instruction * inst);
+
+    /// @brief 整数等于指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_eq_int32(Instruction * inst);
+
+    /// @brief 整数不等于指令翻译成ARM32汇编
+    /// @param inst IR指令
+    void translate_ne_int32(Instruction * inst);
 
     /// @brief 函数调用指令翻译成ARM32汇编
     /// @param inst IR指令

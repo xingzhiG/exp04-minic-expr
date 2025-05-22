@@ -102,7 +102,7 @@ enum class IRInstOperator : std::int8_t {
 	IRINST_OP_BREAK,
 
 	/// @brief 循环continue指令
-	sIRINST_OP_CONTINUE,
+	IRINST_OP_CONTINUE,
 
     /// @brief 最大指令码，也是无效指令
     IRINST_OP_MAX

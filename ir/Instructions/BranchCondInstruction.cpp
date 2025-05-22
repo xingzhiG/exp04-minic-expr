@@ -21,7 +21,12 @@
 
 BranchCondInstruction::BranchCondInstruction(Function* func, Value* cond, LabelInstruction* trueLabel, LabelInstruction* falseLabel)
     : Instruction(func, IRInstOperator::IRINST_OP_BRANCH_COND, VoidType::getType()),
-      cond(cond), trueLabel(trueLabel), falseLabel(falseLabel) {}
+      cond(cond), trueLabel(trueLabel), falseLabel(falseLabel) 
+{
+	addOperand(cond);
+	addOperand(trueLabel);
+	addOperand(falseLabel);
+}
 
 void BranchCondInstruction::toString(std::string& str) {
     str = "bc " + cond->getIRName() + ", label " + trueLabel->getIRName() + ", label " + falseLabel->getIRName();
