@@ -1,5 +1,5 @@
 
-// Generated from MiniC.g4 by ANTLR 4.12.0
+// Generated from /home/code/exp/exp04-minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -20,6 +20,12 @@ public:
    * Visit parse trees produced by MiniCParser.
    */
     virtual std::any visitCompileUnit(MiniCParser::CompileUnitContext *context) = 0;
+
+    virtual std::any visitFuncType(MiniCParser::FuncTypeContext *context) = 0;
+
+    virtual std::any visitFuncParamList(MiniCParser::FuncParamListContext *context) = 0;
+
+    virtual std::any visitFuncParam(MiniCParser::FuncParamContext *context) = 0;
 
     virtual std::any visitFuncDef(MiniCParser::FuncDefContext *context) = 0;
 

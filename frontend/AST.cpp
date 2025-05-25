@@ -249,6 +249,21 @@ ast_node * create_func_def(type_attr & type, var_id_attr & id, ast_node * block_
     return create_func_def(type_node, id_node, block_node, params_node);
 }
 
+/// @brief 创建函数形式参数的节点
+/// @param line_no 行号
+/// @param param_name 形式参数名
+/// @return 创建的节点
+ast_node * create_func_formal_param(uint32_t line_no, const char * param_name)
+{
+    // 创建名字节点
+    ast_node * id_node = ast_node::New(std::string(param_name), line_no);
+
+    // 创建形参节点，仅包含名字节点
+    ast_node * param_node = create_contain_node(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, id_node);
+
+    return param_node;
+}
+
 /// @brief 创建AST的内部节点
 /// @param node_type 节点类型
 /// @param first_child 第一个孩子节点

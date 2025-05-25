@@ -1,5 +1,5 @@
 
-// Generated from MiniC.g4 by ANTLR 4.12.0
+// Generated from /home/code/exp/exp04-minic-expr/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -22,12 +22,13 @@ public:
   };
 
   enum {
-    RuleCompileUnit = 0, RuleFuncDef = 1, RuleBlock = 2, RuleBlockItemList = 3, 
-    RuleBlockItem = 4, RuleVarDecl = 5, RuleBasicType = 6, RuleVarDef = 7, 
-    RuleStatement = 8, RuleExpr = 9, RuleOrExp = 10, RuleAndExp = 11, RuleRelExp = 12, 
-    RuleRelOp = 13, RuleLogicOp = 14, RuleMultExp = 15, RuleMultOp = 16, 
-    RuleAddExp = 17, RuleAddOp = 18, RuleUnaryExp = 19, RulePrimaryExp = 20, 
-    RuleRealParamList = 21, RuleLVal = 22
+    RuleCompileUnit = 0, RuleFuncType = 1, RuleFuncParamList = 2, RuleFuncParam = 3, 
+    RuleFuncDef = 4, RuleBlock = 5, RuleBlockItemList = 6, RuleBlockItem = 7, 
+    RuleVarDecl = 8, RuleBasicType = 9, RuleVarDef = 10, RuleStatement = 11, 
+    RuleExpr = 12, RuleOrExp = 13, RuleAndExp = 14, RuleRelExp = 15, RuleRelOp = 16, 
+    RuleLogicOp = 17, RuleMultExp = 18, RuleMultOp = 19, RuleAddExp = 20, 
+    RuleAddOp = 21, RuleUnaryExp = 22, RulePrimaryExp = 23, RuleRealParamList = 24, 
+    RuleLVal = 25
   };
 
   explicit MiniCParser(antlr4::TokenStream *input);
@@ -48,6 +49,9 @@ public:
 
 
   class CompileUnitContext;
+  class FuncTypeContext;
+  class FuncParamListContext;
+  class FuncParamContext;
   class FuncDefContext;
   class BlockContext;
   class BlockItemListContext;
@@ -88,15 +92,60 @@ public:
 
   CompileUnitContext* compileUnit();
 
+  class  FuncTypeContext : public antlr4::ParserRuleContext {
+  public:
+    FuncTypeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *T_INT();
+    antlr4::tree::TerminalNode *T_VOID();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  FuncTypeContext* funcType();
+
+  class  FuncParamListContext : public antlr4::ParserRuleContext {
+  public:
+    FuncParamListContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<FuncParamContext *> funcParam();
+    FuncParamContext* funcParam(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> T_COMMA();
+    antlr4::tree::TerminalNode* T_COMMA(size_t i);
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  FuncParamListContext* funcParamList();
+
+  class  FuncParamContext : public antlr4::ParserRuleContext {
+  public:
+    FuncParamContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    BasicTypeContext *basicType();
+    antlr4::tree::TerminalNode *T_ID();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  FuncParamContext* funcParam();
+
   class  FuncDefContext : public antlr4::ParserRuleContext {
   public:
     FuncDefContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *T_INT();
+    FuncTypeContext *funcType();
     antlr4::tree::TerminalNode *T_ID();
     antlr4::tree::TerminalNode *T_L_PAREN();
     antlr4::tree::TerminalNode *T_R_PAREN();
     BlockContext *block();
+    FuncParamListContext *funcParamList();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
