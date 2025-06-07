@@ -53,28 +53,23 @@ void FuncCallInstruction::toString(std::string & str)
     // 这里假定所有函数返回类型要么是i32，要么是void
     // 函数参数的类型是i32
 
-    if (type->isVoidType()) {
+	// 获取真实返回类型字符串
+    std::string retTypeStr = calledFunction->getReturnType()->toString();
 
-        // 函数没有返回值设置
-        str = "call void " + calledFunction->getIRName() + "(";
+	if (type->isVoidType()) {
+        // 无返回值
+        str = "call " + retTypeStr + " " + calledFunction->getIRName() + "(";
     } else {
-
-        // 函数有返回值要设置到结果变量中
-        str = getIRName() + " = call i32 " + calledFunction->getIRName() + "(";
+        // 有返回值
+        str = getIRName() + " = call " + retTypeStr + " " + calledFunction->getIRName() + "(";
     }
 
-    if (argCount == 0) {
-
-        // 如果没有arg指令，则输出函数的实参
-        for (int32_t k = 0; k < operandsNum; ++k) {
-
-            auto operand = getOperand(k);
-
-            str += operand->getType()->toString() + " " + operand->getIRName();
-
-            if (k != (operandsNum - 1)) {
-                str += ", ";
-            }
+    // 输出参数类型和参数
+    for (int32_t k = 0; k < operandsNum; ++k) {
+        auto operand = getOperand(k);
+        str += operand->getType()->toString() + " " + operand->getIRName();
+        if (k != (operandsNum - 1)) {
+            str += ", ";
         }
     }
 

@@ -234,10 +234,16 @@ bool IRGenerator::ir_function_define(ast_node * node)
 
         // 保存函数返回值变量到函数信息中，在return语句翻译时需要设置值到这个变量中
         retValue = static_cast<LocalVariable *>(module->newVarValue(type_node->type));
+        newFunc->setReturnValue(retValue);
+    
+		// 这里最好设置返回值变量的初值为0，以便在没有返回值时能够返回0
+		if (name_node->name == "main") {
+            MoveInstruction *initRet = new MoveInstruction(newFunc, retValue, module->newConstInt(0));
+            irCode.addInst(initRet);
+        }
+	} else {
+        newFunc->setReturnValue(nullptr);
     }
-    newFunc->setReturnValue(retValue);
-
-    // 这里最好设置返回值变量的初值为0，以便在没有返回值时能够返回0
 
     // 函数内已经进入作用域，内部不再需要做变量的作用域管理
     block_node->needScope = false;
@@ -278,13 +284,30 @@ bool IRGenerator::ir_function_define(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_function_formal_params(ast_node * node)
 {
-    // TODO 目前形参还不支持，直接返回true
+    Function * func = module->getCurrentFunction();
+    if (!func || !node) return true;
 
-    // 每个形参变量都创建对应的临时变量，用于表达实参转递的值
-    // 而真实的形参则创建函数内的局部变量。
-    // 然后产生赋值指令，用于把表达实参值的临时变量拷贝到形参局部变量上。
-    // 请注意这些指令要放在Entry指令后面，因此处理的先后上要注意。
+    // 遍历所有形参
+    for (size_t i = 0; i < node->sons.size(); ++i) {
+        auto *paramAst = node->sons[i];
+        if (!paramAst || paramAst->sons.empty() || !paramAst->sons[0]) continue;
+        std::string paramName = paramAst->sons[0]->name;
+        Type * paramType = paramAst->sons[0]->type;
 
+        // 1. 创建FormalParam并加入函数参数列表
+        FormalParam* formalParam = new FormalParam{paramType, paramName};
+        func->getParams().push_back(formalParam);
+
+        // 2. 创建局部变量Value（函数体内用），自动插入作用域
+        LocalVariable * localVar = static_cast<LocalVariable *>(module->newVarValue(paramType, paramName));
+
+        // 3. 入口参数Value（参数顺序与形参一致）
+		Value * paramValue = func->getParams()[i]; // 入口参数Value
+
+		// 生成赋值指令，将入口参数赋值给局部变量
+		MoveInstruction * assignInst = new MoveInstruction(func, localVar, paramValue);
+		node->blockInsts.addInst(assignInst);
+    }
     return true;
 }
 
@@ -802,6 +825,13 @@ bool IRGenerator::ir_ge(ast_node * node) {
     return true;
 }
 
+/// @brief 辅助函数，判断是否为逻辑表达式
+static bool is_logic_expr(ast_node * node) {
+    return node->node_type == ast_operator_type::AST_OP_AND ||
+           node->node_type == ast_operator_type::AST_OP_OR ||
+           node->node_type == ast_operator_type::AST_OP_NOT;
+}
+
 // 逻辑与 && 短路求值
 bool IRGenerator::ir_and(ast_node * node) {
     // 父节点应已设置 node->trueLabel 和 node->falseLabel
@@ -850,14 +880,34 @@ bool IRGenerator::ir_or(ast_node * node) {
 
 // 逻辑非 !（只需交换真/假出口label）
 bool IRGenerator::ir_not(ast_node * node) {
-    // 短路模式：翻转真/假label
     if (node->trueLabel && node->falseLabel) {
-        node->sons[0]->trueLabel = node->falseLabel;
-        node->sons[0]->falseLabel = node->trueLabel;
-        ir_visit_ast_node(node->sons[0]);
-        node->blockInsts.addInst(node->sons[0]->blockInsts);
-        node->val = nullptr;
-        return true;
+        ast_node * child = node->sons[0];
+        // 如果子节点是逻辑表达式，直接交换label递归
+        if (is_logic_expr(child)) {
+            child->trueLabel = node->falseLabel;
+            child->falseLabel = node->trueLabel;
+            ir_visit_ast_node(child);
+            node->blockInsts.addInst(child->blockInsts);
+            node->val = nullptr;
+            return true;
+        } else {
+            // 子节点不是逻辑表达式，生成 icmp eq x, 0 和条件跳转
+            ast_node * operand = ir_visit_ast_node(child);
+            if (!operand) return false;
+            BinaryInstruction * eqInst = new BinaryInstruction(
+                module->getCurrentFunction(),
+                IRInstOperator::IRINST_OP_EQ,
+                operand->val,
+                module->newConstInt(0),
+                IntegerType::getTypeBool()
+            );
+            node->blockInsts.addInst(operand->blockInsts);
+            node->blockInsts.addInst(eqInst);
+            node->blockInsts.addInst(new BranchCondInstruction(
+                module->getCurrentFunction(), eqInst, node->trueLabel, node->falseLabel));
+            node->val = eqInst;
+            return true;
+        }
     }
 
     // 普通模式：生成 icmp eq x, 0
@@ -873,12 +923,7 @@ bool IRGenerator::ir_not(ast_node * node) {
     return true;
 }
 
-/// @brief 辅助函数，判断是否为逻辑表达式
-static bool is_logic_expr(ast_node * node) {
-    return node->node_type == ast_operator_type::AST_OP_AND ||
-           node->node_type == ast_operator_type::AST_OP_OR ||
-           node->node_type == ast_operator_type::AST_OP_NOT;
-}
+
 
 /// @brief if/if-else语句翻译成线性中间IR
 /// @param node AST节点

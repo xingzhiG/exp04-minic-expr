@@ -252,15 +252,15 @@ ast_node * create_func_def(type_attr & type, var_id_attr & id, ast_node * block_
 /// @brief 创建函数形式参数的节点
 /// @param line_no 行号
 /// @param param_name 形式参数名
+/// @param param_type 参数类型
 /// @return 创建的节点
-ast_node * create_func_formal_param(uint32_t line_no, const char * param_name)
+ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, type_attr & param_type)
 {
-    // 创建名字节点
     ast_node * id_node = ast_node::New(std::string(param_name), line_no);
+    id_node->type = typeAttr2Type(param_type);
 
-    // 创建形参节点，仅包含名字节点
     ast_node * param_node = create_contain_node(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, id_node);
-
+    param_node->type = typeAttr2Type(param_type);
     return param_node;
 }
 

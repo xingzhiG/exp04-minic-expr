@@ -124,8 +124,11 @@ std::any MiniCCSTVisitor::visitFuncParam(MiniCParser::FuncParamContext * ctx)
     uint32_t line_no = ctx->T_ID()->getSymbol()->getLine();
     std::string idStr = ctx->T_ID()->getText();
 
-    // 创建形参节点，传递 std::string::c_str()，生命周期由 idStr 保证到函数结束
-    return create_func_formal_param(line_no, idStr.c_str());
+    // 获取类型
+    type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
+
+    // 创建形参节点，传递类型属性
+    return create_func_formal_param(line_no, idStr.c_str(), typeAttr);
 }
 
 /// @brief 非终结运算符block的遍历
