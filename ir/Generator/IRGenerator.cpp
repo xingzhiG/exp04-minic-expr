@@ -1148,14 +1148,12 @@ bool IRGenerator::ir_declare_statment(ast_node * node)
     bool result = false;
 
     for (auto & child: node->sons) {
-
-        // 遍历每个变量声明
+		// 遍历每个变量声明的AST节点
         result = ir_variable_declare(child);
-        if (!result) {
-            break;
-        }
+        if (!result) break;
+        // 合并每个变量声明的IR指令到声明语句节点
+        node->blockInsts.addInst(child->blockInsts);
     }
-
     return result;
 }
 
@@ -1168,7 +1166,30 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
     // TODO 这里可强化类型等检查
 
+    // sons[0]: 类型节点
+    // sons[1]: 变量名节点
+    // sons[2]: 初始化表达式节点（可选）
+
+    // 创建变量
     node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
+
+    // 处理初始化表达式
+    if (node->sons.size() > 2 && node->sons[2]) {
+        // 生成初始化表达式的IR
+        ast_node * init_expr_node = ir_visit_ast_node(node->sons[2]);
+        if (!init_expr_node) return false;
+
+        // 生成赋值指令
+        MoveInstruction * movInst = new MoveInstruction(
+            module->getCurrentFunction(),
+            node->val,                // 左值：变量
+            init_expr_node->val       // 右值：初始化表达式的值
+        );
+
+        // 合并初始化表达式的IR指令
+        node->blockInsts.addInst(init_expr_node->blockInsts);
+        node->blockInsts.addInst(movInst);
+    }
 
     return true;
 }

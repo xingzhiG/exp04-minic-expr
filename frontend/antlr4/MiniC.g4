@@ -40,8 +40,8 @@ varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
 // 基本类型
 basicType: T_INT;
 
-// 变量定义
-varDef: T_ID;
+// 变量定义，修改以支持初始化
+varDef: T_ID (T_ASSIGN expr)?;
 
 // 语句文法：扩展以支持条件语句和循环语句
 statement:

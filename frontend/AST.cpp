@@ -441,6 +441,39 @@ ast_node * createVarDeclNode(type_attr & type, var_id_attr & id)
     return createVarDeclNode(typeAttr2Type(type), id);
 }
 
+
+/// @brief 创建变量定义节点，支持初始化表达式
+/// @param type 类型
+/// @param id 变量名
+/// @param init_expr 初始化表达式节点（可为nullptr）
+/// @return ast_node* 变量定义节点
+ast_node * createVarDeclNode(Type * type, var_id_attr & id, ast_node * init_expr)
+{
+    // 创建类型节点
+    ast_node * type_node = ast_node::New(type);
+
+    // 创建标识符节点
+    ast_node * id_node = ast_node::New(id.id, id.lineno);
+
+    // 释放id字符串
+    free(id.id);
+    id.id = nullptr;
+
+    // 创建变量定义节点，第三个参数为初始化表达式（可为nullptr）
+    ast_node * decl_node = create_contain_node(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, init_expr);
+
+    // 暂存类型
+    decl_node->type = type;
+
+    return decl_node;
+}
+
+/// @brief 创建变量定义节点，支持type_attr
+ast_node * createVarDeclNode(type_attr & type, var_id_attr & id, ast_node * init_expr)
+{
+    return createVarDeclNode(typeAttr2Type(type), id, init_expr);
+}
+
 ///
 /// @brief 根据变量的类型和属性创建变量声明语句节点
 /// @param type 变量的类型
