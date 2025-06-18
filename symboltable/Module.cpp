@@ -18,6 +18,7 @@
 #include "ScopeStack.h"
 #include "Common.h"
 #include "VoidType.h"
+#include "PointerType.h"
 
 Module::Module(std::string _name) : name(_name)
 {
@@ -32,6 +33,13 @@ Module::Module(std::string _name) : name(_name)
     (void) newFunction("getint", IntegerType::getTypeInt(), {}, true);
     (void) newFunction("putch", VoidType::getType(), {new FormalParam{IntegerType::getTypeInt(), ""}}, true);
 	(void) newFunction("getch", IntegerType::getTypeInt(), {}, true);
+    // 新增：注册数组相关内置函数
+    // int getarray(int a[])
+    Type* intType = IntegerType::getTypeInt();
+    Type* intPtrType = new PointerType(intType); // int*
+    (void) newFunction("getarray", intType, {new FormalParam{intPtrType, ""}}, true);
+    // void putarray(int n, int *d)
+    (void) newFunction("putarray", VoidType::getType(), {new FormalParam{intType, ""}, new FormalParam{intPtrType, ""}}, true);
 }
 
 /// @brief 进入作用域，如进入函数体块、语句块等
