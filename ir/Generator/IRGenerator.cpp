@@ -1243,7 +1243,7 @@ bool IRGenerator::ir_array_access(ast_node * node)
     }
 
 	// 3. 获取数组类型及各维长度，允许最后一层为指针类型
-	Type * arrType = array_node->type;
+	Type * arrType = array_node->val->getType();
 	std::vector<int> dim_sizes;
 	for (size_t i = 0; i < index_nodes.size(); ++i) {
 		Instanceof(arrayArrType, ArrayType*, arrType);
@@ -1304,15 +1304,25 @@ bool IRGenerator::ir_array_access(ast_node * node)
     Value * base_addr = array_node->val;
 
     // 8. 计算最终地址 addr = base_addr + offset_bytes
-    BinaryInstruction * addr = new BinaryInstruction(func, IRInstOperator::IRINST_OP_ADD_I, base_addr, offset_bytes, IntegerType::getTypeInt());
+    PointerType* ptrType = new PointerType(arrType); // arrType为元素类型
+    BinaryInstruction * addr = new BinaryInstruction(func, IRInstOperator::IRINST_OP_ADD_I, base_addr, offset_bytes, ptrType);
     node->blockInsts.addInst(addr);
 
-    // 9. 生成load指令，读取该地址的值
-    UnaryInstruction * load = new UnaryInstruction(func, IRInstOperator::IRINST_OP_LOAD, addr, arrType);
-    node->blockInsts.addInst(load);
+    // 9. 判断是否为左值，分析是否需要生成Load指令
+    bool asLValue = false;
+    if (node->parent &&
+        node->parent->node_type == ast_operator_type::AST_OP_ASSIGN &&
+        node->parent->sons[0] == node) {
+        asLValue = true;
+    }
 
-    // 10. 设置节点的val为最终结果
-    node->val = load;
+    if (asLValue) {
+        node->val = addr;
+    } else {
+        UnaryInstruction * load = new UnaryInstruction(func, IRInstOperator::IRINST_OP_LOAD, addr, arrType);
+        node->blockInsts.addInst(load);
+        node->val = load;
+    }
 
     return true;
 }
