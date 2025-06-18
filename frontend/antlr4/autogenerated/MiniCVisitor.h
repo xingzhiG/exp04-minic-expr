@@ -27,6 +27,8 @@ public:
 
     virtual std::any visitFuncParam(MiniCParser::FuncParamContext *context) = 0;
 
+    virtual std::any visitParamDims(MiniCParser::ParamDimsContext *context) = 0;
+
     virtual std::any visitFuncDef(MiniCParser::FuncDefContext *context) = 0;
 
     virtual std::any visitBlock(MiniCParser::BlockContext *context) = 0;

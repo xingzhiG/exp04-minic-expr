@@ -23,12 +23,12 @@ public:
 
   enum {
     RuleCompileUnit = 0, RuleFuncType = 1, RuleFuncParamList = 2, RuleFuncParam = 3, 
-    RuleFuncDef = 4, RuleBlock = 5, RuleBlockItemList = 6, RuleBlockItem = 7, 
-    RuleVarDecl = 8, RuleBasicType = 9, RuleVarDef = 10, RuleDims = 11, 
-    RuleStatement = 12, RuleExpr = 13, RuleOrExp = 14, RuleAndExp = 15, 
-    RuleRelExp = 16, RuleRelOp = 17, RuleLogicOp = 18, RuleMultExp = 19, 
-    RuleMultOp = 20, RuleAddExp = 21, RuleAddOp = 22, RuleUnaryExp = 23, 
-    RulePrimaryExp = 24, RuleRealParamList = 25, RuleLVal = 26, RuleDimsAccess = 27
+    RuleParamDims = 4, RuleFuncDef = 5, RuleBlock = 6, RuleBlockItemList = 7, 
+    RuleBlockItem = 8, RuleVarDecl = 9, RuleBasicType = 10, RuleVarDef = 11, 
+    RuleDims = 12, RuleStatement = 13, RuleExpr = 14, RuleOrExp = 15, RuleAndExp = 16, 
+    RuleRelExp = 17, RuleRelOp = 18, RuleLogicOp = 19, RuleMultExp = 20, 
+    RuleMultOp = 21, RuleAddExp = 22, RuleAddOp = 23, RuleUnaryExp = 24, 
+    RulePrimaryExp = 25, RuleRealParamList = 26, RuleLVal = 27, RuleDimsAccess = 28
   };
 
   explicit MiniCParser(antlr4::TokenStream *input);
@@ -52,6 +52,7 @@ public:
   class FuncTypeContext;
   class FuncParamListContext;
   class FuncParamContext;
+  class ParamDimsContext;
   class FuncDefContext;
   class BlockContext;
   class BlockItemListContext;
@@ -130,7 +131,7 @@ public:
     virtual size_t getRuleIndex() const override;
     BasicTypeContext *basicType();
     antlr4::tree::TerminalNode *T_ID();
-    DimsContext *dims();
+    ParamDimsContext *paramDims();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -138,6 +139,20 @@ public:
   };
 
   FuncParamContext* funcParam();
+
+  class  ParamDimsContext : public antlr4::ParserRuleContext {
+  public:
+    ParamDimsContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<ExprContext *> expr();
+    ExprContext* expr(size_t i);
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  ParamDimsContext* paramDims();
 
   class  FuncDefContext : public antlr4::ParserRuleContext {
   public:

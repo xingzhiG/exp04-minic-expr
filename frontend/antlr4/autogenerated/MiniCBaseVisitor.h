@@ -31,6 +31,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitParamDims(MiniCParser::ParamDimsContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitFuncDef(MiniCParser::FuncDefContext *ctx) override {
     return visitChildren(ctx);
   }

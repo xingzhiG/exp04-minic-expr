@@ -57,6 +57,11 @@ protected:
 	/// @return AST的节点
 	std::any visitFuncParam(MiniCParser::FuncParamContext * ctx) override;
 
+    /// @brief 非终结符ParamDims的分析（形参数组维度定义）
+    /// @param ctx CST上下文
+    /// @return std::any，通常为std::vector<ast_node *>
+    std::any visitParamDims(MiniCParser::ParamDimsContext * ctx) override;
+
     /// @brief 非终结运算符block的遍历
     /// @param ctx CST上下文
     /// @return AST的节点

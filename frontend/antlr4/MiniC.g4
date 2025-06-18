@@ -20,7 +20,10 @@ funcType: T_INT | T_VOID;
 funcParamList: funcParam (T_COMMA funcParam)*;
 
 // 单个形参
-funcParam: basicType T_ID dims?;
+funcParam: basicType T_ID paramDims?;
+
+// 用于形参的维度描述，支持省略最高维
+paramDims: '[' ']' ('[' expr ']')* | ('[' expr ']')+;
 
 // 函数定义，实现对形参和void返回类型的支持
 funcDef: funcType T_ID T_L_PAREN funcParamList? T_R_PAREN block;
@@ -44,7 +47,7 @@ basicType: T_INT;
 varDef: T_ID dims? (T_ASSIGN expr)?;
 
 // 数组维度
-dims: ('[' expr? ']')+; // 支持多维数组
+dims: ('[' expr ']')+; // 支持多维数组
 
 // 语句文法：扩展以支持条件语句和循环语句
 statement:

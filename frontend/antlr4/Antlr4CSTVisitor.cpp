@@ -120,7 +120,7 @@ std::any MiniCCSTVisitor::visitFuncParamList(MiniCParser::FuncParamListContext *
 // 遍历单个形参
 std::any MiniCCSTVisitor::visitFuncParam(MiniCParser::FuncParamContext * ctx)
 {
-    // funcParam: basicType T_ID dims?;
+    // funcParam: basicType T_ID paramDims?;
 
     uint32_t line_no = ctx->T_ID()->getSymbol()->getLine();
     std::string idStr = ctx->T_ID()->getText();
@@ -130,12 +130,36 @@ std::any MiniCCSTVisitor::visitFuncParam(MiniCParser::FuncParamContext * ctx)
 
     // 处理数组维度（如 int a[], int b[10][20]）
     std::vector<ast_node *> dims_nodes;
-    if (ctx->dims()) {
-        dims_nodes = std::any_cast<std::vector<ast_node *>>(visitDims(ctx->dims()));
+    if (ctx->paramDims()) {
+        dims_nodes = std::any_cast<std::vector<ast_node *>>(visitParamDims(ctx->paramDims()));
     }
 
     // 创建形参节点，传递类型、名字、维度信息
     return create_func_formal_param(line_no, idStr.c_str(), typeAttr, dims_nodes);
+}
+
+/// @brief 处理形参数组维度 paramDims: '[' ']' ('[' expr ']')* | ('[' expr ']')+
+/// 返回一个包含每一维表达式（最高维可为nullptr）的vector<ast_node*>
+std::any MiniCCSTVisitor::visitParamDims(MiniCParser::ParamDimsContext *ctx)
+{
+    std::vector<ast_node *> dims_nodes;
+    // 判断是否以 [] 开头
+    if (ctx->children.size() >= 2 &&
+        ctx->children[0]->getText() == "[" &&
+        ctx->children[1]->getText() == "]") {
+        // '[' ']' ('[' expr ']')* 形式
+        dims_nodes.push_back(nullptr); // 最高维为nullptr
+        // 后续每一维都必须有expr
+        for (auto exprCtx : ctx->expr()) {
+            dims_nodes.push_back(std::any_cast<ast_node *>(visitExpr(exprCtx)));
+        }
+    } else {
+        // ('[' expr ']')+ 形式
+        for (auto exprCtx : ctx->expr()) {
+            dims_nodes.push_back(std::any_cast<ast_node *>(visitExpr(exprCtx)));
+        }
+    }
+    return dims_nodes;
 }
 
 /// @brief 非终结运算符block的遍历
@@ -631,24 +655,15 @@ std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 }
 
 
-/// @brief 处理数组维度定义 dims: ('[' expr? ']')+
-/// 返回一个包含每一维表达式（可为nullptr）的vector<ast_node*>
+/// @brief 处理数组维度定义 dims: ('[' expr ']')+
+/// 返回一个包含每一维表达式的vector<ast_node*>
 std::any MiniCCSTVisitor::visitDims(MiniCParser::DimsContext *ctx)
 {
     std::vector<ast_node *> dims_nodes;
-    for (auto bracket : ctx->children) {
-        // children: '[', expr?, ']'
-        // 只处理expr
-        if (auto exprCtx = dynamic_cast<MiniCParser::ExprContext *>(bracket)) {
-            dims_nodes.push_back(std::any_cast<ast_node *>(visitExpr(exprCtx)));
-        }
-        // 如果没有expr（如形参int a[]），也要占位
-        if (bracket->getText() == "]" && (dims_nodes.size() < ctx->expr().size() + 1)) {
-            dims_nodes.push_back(nullptr);
-        }
+    // dims: ('[' expr ']')+，每一维都必须有expr
+    for (auto exprCtx : ctx->expr()) {
+        dims_nodes.push_back(std::any_cast<ast_node *>(visitExpr(exprCtx)));
     }
-    // 更稳妥的写法：直接遍历ctx->expr()和ctx->children的关系
-    // 但一般情况下，expr数量和维度数量一致或缺省
     return dims_nodes;
 }
 
