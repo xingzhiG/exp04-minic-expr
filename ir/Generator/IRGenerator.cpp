@@ -91,6 +91,7 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
 
 	/* 数组访问 */
 	ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_ACCESS] = &IRGenerator::ir_array_access;
+	ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_DECL] = &IRGenerator::ir_array_decl;
 
     /* 语句块 */
     ast2ir_handlers[ast_operator_type::AST_OP_BLOCK] = &IRGenerator::ir_block;
@@ -1174,31 +1175,42 @@ bool IRGenerator::ir_declare_statment(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_variable_declare(ast_node * node)
 {
-    // 共有两个孩子，第一个类型，第二个变量名
-
-    // TODO 这里可强化类型等检查
-
     // sons[0]: 类型节点
-    // sons[1]: 变量名节点
+    // sons[1]: 变量名节点 或 AST_OP_ARRAY_DECL 节点
     // sons[2]: 初始化表达式节点（可选）
 
-    // 创建变量
-    node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
+    ast_node * type_node = node->sons[0];
+    ast_node * name_or_array_node = node->sons[1];
+
+    if (name_or_array_node->node_type == ast_operator_type::AST_OP_ARRAY_DECL) {
+        // 数组声明
+        // sons[0] 是 id 节点
+        ast_node * id_node = name_or_array_node->sons[0];
+        std::string var_name = id_node->name;
+        Type * var_type = node->type; // 或 name_or_array_node->type
+
+        // 生成变量并注册到符号表
+        node->val = module->newVarValue(var_type, var_name);
+
+        // 可递归处理维度表达式（如有需要）
+
+    } else {
+        // 普通变量
+        std::string var_name = name_or_array_node->name;
+        Type * var_type = type_node->type;
+        node->val = module->newVarValue(var_type, var_name);
+    }
 
     // 处理初始化表达式
     if (node->sons.size() > 2 && node->sons[2]) {
-        // 生成初始化表达式的IR
         ast_node * init_expr_node = ir_visit_ast_node(node->sons[2]);
         if (!init_expr_node) return false;
 
-        // 生成赋值指令
         MoveInstruction * movInst = new MoveInstruction(
             module->getCurrentFunction(),
-            node->val,                // 左值：变量
-            init_expr_node->val       // 右值：初始化表达式的值
+            node->val,
+            init_expr_node->val
         );
-
-        // 合并初始化表达式的IR指令
         node->blockInsts.addInst(init_expr_node->blockInsts);
         node->blockInsts.addInst(movInst);
     }
@@ -1301,6 +1313,30 @@ bool IRGenerator::ir_array_access(ast_node * node)
 
     // 10. 设置节点的val为最终结果
     node->val = load;
+
+    return true;
+}
+
+/// @brief 数组声明AST节点翻译成线性中间IR
+/// @param node AST节点（AST_OP_ARRAY_DECL）
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_array_decl(ast_node * node)
+{
+    // sons[0]: id节点（变量名）
+    // sons[1...]: 每个维度的表达式（可为nullptr，表示不定长）
+
+    // 这里只做符号表登记，不生成IR指令
+    // 获取变量名和类型
+    if (node->sons.empty()) return false;
+    ast_node * id_node = node->sons[0];
+    std::string var_name = id_node->name;
+    Type * var_type = node->type;
+
+    // 生成变量（全局或局部），并注册到符号表
+    node->val = module->newVarValue(var_type, var_name);
+
+    // 维度信息可用于后续语义分析或代码生成
+    // 若有初始化表达式，可在父节点处理
 
     return true;
 }

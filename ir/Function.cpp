@@ -103,28 +103,58 @@ void Function::toString(std::string & str)
     // 输出局部变量的名字与IR名字
     for (auto & var: this->varsVector) {
 
-        // 局部变量和临时变量需要输出declare语句
-        str += "\tdeclare " + var->getType()->toString() + " " + var->getIRName();
-
-        std::string extraStr;
-        std::string realName = var->getName();
-        if (!realName.empty()) {
-            str += " ; " + std::to_string(var->getScopeLevel()) + ":" + realName;
-        }
-
-        str += "\n";
-    }
-
-    // 输出临时变量的declare形式
-    // 遍历所有的线性IR指令，文本输出
-    for (auto & inst: code.getInsts()) {
-
-        if (inst->hasResultValue()) {
-
-            // 局部变量和临时变量需要输出declare语句
-            str += "\tdeclare " + inst->getType()->toString() + " " + inst->getIRName() + "\n";
-        }
-    }
+		// 递归剥离数组类型，收集所有维度
+		Type * ty = var->getType();
+		std::vector<int> dims;
+		while (ty->isArrayType()) {
+			auto * arrTy = dynamic_cast<ArrayType *>(ty);
+			if (arrTy) {
+				dims.push_back(arrTy->getNumElements());
+				ty = arrTy->getElementType();
+			} else {
+				break;
+			}
+		}
+	
+		// 输出基础类型
+		str += "\tdeclare " + ty->toString() + " " + var->getIRName();
+	
+		// 追加所有维度
+		for (int dim : dims) {
+			str += "[" + std::to_string(dim) + "]";
+		}
+	
+		std::string realName = var->getName();
+		if (!realName.empty()) {
+			str += " ; " + std::to_string(var->getScopeLevel()) + ":" + realName;
+		}
+	
+		str += "\n";
+	}
+	
+	// 输出临时变量的declare形式
+	for (auto & inst: code.getInsts()) {
+		if (inst->hasResultValue()) {
+			// 递归剥离数组类型，收集所有维度
+			Type * ty = inst->getType();
+			std::vector<int> dims;
+			while (ty->isArrayType()) {
+				auto * arrTy = dynamic_cast<ArrayType *>(ty);
+				if (arrTy) {
+					dims.push_back(arrTy->getNumElements());
+					ty = arrTy->getElementType();
+				} else {
+					break;
+				}
+			}
+	
+			str += "\tdeclare " + ty->toString() + " " + inst->getIRName();
+			for (int dim : dims) {
+				str += "[" + std::to_string(dim) + "]";
+			}
+			str += "\n";
+		}
+	}
 
     // 遍历所有的线性IR指令，文本输出
     for (auto & inst: code.getInsts()) {

@@ -146,6 +146,9 @@ enum class ast_operator_type : int {
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 
+	/// @brief 数组声明
+	AST_OP_ARRAY_DECL,
+
 	/// @brief 数组访问
 	AST_OP_ARRAY_ACCESS
 };
@@ -399,3 +402,5 @@ ast_node * createVarDeclNode(type_attr & type, var_id_attr & id, const std::vect
 ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, type_attr & param_type, const std::vector<ast_node *>& dims);
 
 ast_node * create_array_access_node(ast_node * id_node, const std::vector<ast_node *>& index_nodes);
+
+ast_node * create_array_decl_node(ast_node * id_node, const std::vector<ast_node *>& dims);

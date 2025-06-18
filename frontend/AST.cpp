@@ -22,6 +22,7 @@
 #include "AttrType.h"
 #include "Types/IntegerType.h"
 #include "Types/VoidType.h"
+#include "Types/ArrayType.h"
 
 /* 整个AST的根节点 */
 ast_node * ast_root = nullptr;
@@ -492,17 +493,42 @@ ast_node * createVarDeclNode(type_attr & type, var_id_attr & id, ast_node * init
 
 ast_node * createVarDeclNode(Type * type, var_id_attr & id, const std::vector<ast_node *>& dims, ast_node * init_expr)
 {
-    ast_node * type_node = ast_node::New(type);
+    // 1. 递归构造数组类型
+	// 递归构造数组类型，忽略无效维度
+	Type * final_type = type;
+	// 维度从外到内，逆序构造
+	for (auto it = dims.rbegin(); it != dims.rend(); ++it) {
+		ast_node * dim_node = *it;
+		// 只处理常量整型字面量
+		if (dim_node && dim_node->node_type == ast_operator_type::AST_OP_LEAF_LITERAL_UINT) {
+			int dim_size = static_cast<int>(dim_node->integer_val);
+			if (dim_size > 0) {
+				final_type = new ArrayType(final_type, dim_size);
+			} else {
+				// 维度为0，报错或跳过
+				// 可以选择 continue; 或 return nullptr; 或抛出异常
+				continue;
+			}
+		} else {
+			// 非法维度，跳过或报错
+			continue;
+		}
+	}
+
+    ast_node * type_node = ast_node::New(final_type);
     ast_node * id_node = ast_node::New(id.id, id.lineno);
     free(id.id); id.id = nullptr;
 
-    ast_node * decl_node = new ast_node(ast_operator_type::AST_OP_VAR_DECL, type, id_node->line_no);
+    ast_node * decl_node = new ast_node(ast_operator_type::AST_OP_VAR_DECL, final_type, id_node->line_no);
     decl_node->insert_son_node(type_node);
-    decl_node->insert_son_node(id_node);
 
-    // 插入维度节点
-    for (auto dim : dims) {
-        decl_node->insert_son_node(dim);
+    if (!dims.empty()) {
+        // 有维度，插入数组声明节点
+        ast_node * array_decl = create_array_decl_node(id_node, dims);
+        decl_node->insert_son_node(array_decl);
+    } else {
+        // 普通变量
+        decl_node->insert_son_node(id_node);
     }
 
     // 插入初始化表达式
@@ -563,4 +589,18 @@ ast_node * create_array_access_node(ast_node * id_node, const std::vector<ast_no
         node->insert_son_node(idx);
     }
     return node;
+}
+
+/// @brief 创建数组声明节点
+/// @param id_node 标识符节点
+/// @param dims 维度节点，每个维度一个子节点
+/// @return ast_node* 数组声明节点
+ast_node * create_array_decl_node(ast_node * id_node, const std::vector<ast_node *>& dims)
+{
+    ast_node * array_decl = new ast_node(ast_operator_type::AST_OP_ARRAY_DECL, id_node->type, id_node->line_no);
+    array_decl->insert_son_node(id_node);
+    for (auto dim : dims) {
+        array_decl->insert_son_node(dim);
+    }
+    return array_decl;
 }

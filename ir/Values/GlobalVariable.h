@@ -19,6 +19,8 @@
 #include "GlobalValue.h"
 #include "IRConstant.h"
 
+#include "Types/ArrayType.h"
+
 ///
 /// @brief 全局变量，寻址时通过符号名或变量名来寻址
 ///
@@ -87,10 +89,29 @@ public:
     /// @brief Declare指令IR显示
     /// @param str
     ///
-    void toDeclareString(std::string & str)
-    {
-        str = "declare " + getType()->toString() + " " + getIRName();
-    }
+	void toDeclareString(std::string & str)
+	{
+		// 递归剥离数组类型，收集所有维度
+		Type * ty = getType();
+		std::vector<int> dims;
+		while (ty->isArrayType()) {
+			auto * arrTy = dynamic_cast<ArrayType *>(ty);
+			if (arrTy) {
+				dims.push_back(arrTy->getNumElements());
+				ty = arrTy->getElementType();
+			} else {
+				break;
+			}
+		}
+
+		// 输出基础类型
+		str = "declare " + ty->toString() + " " + getIRName();
+
+		// 追加所有维度
+		for (int dim : dims) {
+			str += "[" + std::to_string(dim) + "]";
+		}
+	}
 
 private:
     ///
