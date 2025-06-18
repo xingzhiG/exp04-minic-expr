@@ -104,6 +104,12 @@ enum class IRInstOperator : std::int8_t {
 	/// @brief 循环continue指令
 	IRINST_OP_CONTINUE,
 
+	/// @brief Load指令
+	IRINST_OP_LOAD,
+
+	/// @brief Store指令
+	IRINST_OP_STORE,
+
     /// @brief 最大指令码，也是无效指令
     IRINST_OP_MAX
 };

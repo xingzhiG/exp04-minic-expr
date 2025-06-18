@@ -36,6 +36,9 @@
 #include "UnaryInstruction.h"
 #include "BranchCondInstruction.h"
 
+#include "ir/Types/ArrayType.h"
+#include "ir/Types/PointerType.h"
+
 /// @brief 构造函数
 /// @param _root AST的根
 /// @param _module 符号表
@@ -75,7 +78,6 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_BREAK] = &IRGenerator::ir_break;
     ast2ir_handlers[ast_operator_type::AST_OP_CONTINUE] = &IRGenerator::ir_continue;
 
-
     /* 函数调用 */
     ast2ir_handlers[ast_operator_type::AST_OP_FUNC_CALL] = &IRGenerator::ir_function_call;
 
@@ -86,6 +88,9 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     /* 变量定义语句 */
     ast2ir_handlers[ast_operator_type::AST_OP_DECL_STMT] = &IRGenerator::ir_declare_statment;
     ast2ir_handlers[ast_operator_type::AST_OP_VAR_DECL] = &IRGenerator::ir_variable_declare;
+
+	/* 数组访问 */
+	ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_ACCESS] = &IRGenerator::ir_array_access;
 
     /* 语句块 */
     ast2ir_handlers[ast_operator_type::AST_OP_BLOCK] = &IRGenerator::ir_block;
@@ -514,34 +519,41 @@ bool IRGenerator::ir_assign(ast_node * node)
 
     // 赋值运算符的左侧操作数
     ast_node * left = ir_visit_ast_node(son1_node);
-    if (!left) {
-        // 某个变量没有定值
-        // 这里缺省设置变量不存在则创建，因此这里不会错误
-        return false;
-    }
+    if (!left) return false;
 
     // 赋值运算符的右侧操作数
     ast_node * right = ir_visit_ast_node(son2_node);
-    if (!right) {
-        // 某个变量没有定值
-        return false;
-    }
+    if (!right) return false;
 
-    // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
-
-    MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), left->val, right->val);
-
-    // 创建临时变量保存IR的值，以及线性IR指令
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(movInst);
 
-    // 这里假定赋值的类型是一致的
-    node->val = movInst;
+	// 判断左值是否为数组元素访问
+	if (son1_node->node_type == ast_operator_type::AST_OP_ARRAY_ACCESS) {
+		// left->val 是地址，right->val 是要写入的值
+		// 生成 store 指令（使用二元指令）
+		BinaryInstruction * storeInst = new BinaryInstruction(
+			module->getCurrentFunction(),
+			IRInstOperator::IRINST_OP_STORE,
+			left->val,   // 地址
+			right->val,  // 要写入的值
+			left->val->getType() // 存储类型，通常为指针指向的类型
+		);
+		node->blockInsts.addInst(storeInst);
+		node->val = storeInst;
+	} else {
+		// 普通变量赋值
+		MoveInstruction * movInst = new MoveInstruction(
+			module->getCurrentFunction(),
+			left->val,
+			right->val
+		);
+		node->blockInsts.addInst(movInst);
+		node->val = movInst;
+	}
 
     return true;
 }
-
 
 /// @brief 整数取负AST节点翻译成线性中间IR
 /// @param node AST节点
@@ -1190,6 +1202,105 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
         node->blockInsts.addInst(init_expr_node->blockInsts);
         node->blockInsts.addInst(movInst);
     }
+
+    return true;
+}
+
+/// @brief 数组访问AST节点翻译成线性中间IR（支持多维数组降维）
+/// @param node AST节点（AST_OP_ARRAY_ACCESS）
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_array_access(ast_node * node)
+{
+    Function * func = module->getCurrentFunction();
+    // 1. 处理数组变量
+    ast_node * array_node = ir_visit_ast_node(node->sons[0]);
+    if (!array_node) return false;
+
+    // 2. 处理所有下标表达式
+    std::vector<ast_node *> index_nodes;
+    for (size_t i = 1; i < node->sons.size(); ++i) {
+        ast_node * idx = ir_visit_ast_node(node->sons[i]);
+        if (!idx) return false;
+        index_nodes.push_back(idx);
+    }
+
+    // 合并所有下标表达式的IR指令
+    node->blockInsts.addInst(array_node->blockInsts);
+    for (auto idx : index_nodes) {
+        node->blockInsts.addInst(idx->blockInsts);
+    }
+
+	// 3. 获取数组类型及各维长度，允许最后一层为指针类型
+	Type * arrType = array_node->type;
+	std::vector<int> dim_sizes;
+	for (size_t i = 0; i < index_nodes.size(); ++i) {
+		Instanceof(arrayArrType, ArrayType*, arrType);
+		if (arrayArrType) {
+			dim_sizes.push_back(arrayArrType->getNumElements());
+			arrType = arrayArrType->getElementType();
+		} else if (arrType->isPointerType()) {
+			// 指针类型，允许做一次下标访问
+			Instanceof(ptrType, PointerType*, arrType);
+			if (ptrType) {
+				arrType = const_cast<Type*>(ptrType->getPointeeType());
+			} else {
+				minic_log(LOG_ERROR, "指针类型降维失败");
+				return false;
+			}
+			// 不再添加 dim_sizes，因为指针没有固定长度
+		} else {
+			minic_log(LOG_ERROR, "数组下标维度超过定义");
+			return false;
+		}
+	}
+
+    // 4. 计算线性下标 offset = i0*dim1*dim2 + i1*dim2 + i2 ...
+    BinaryInstruction * sum = nullptr;
+    BinaryInstruction * mul = nullptr;
+    Value * offset = nullptr;
+    for (size_t i = 0; i < index_nodes.size(); ++i) {
+        Value * idx_val = index_nodes[i]->val;
+        Value * term = idx_val;
+        for (size_t j = i + 1; j < dim_sizes.size(); ++j) {
+            ConstInt * dim_val = module->newConstInt(dim_sizes[j]);
+            mul = new BinaryInstruction(func, IRInstOperator::IRINST_OP_MUL_I, term, dim_val, IntegerType::getTypeInt());
+            node->blockInsts.addInst(mul);
+            term = mul;
+        }
+        if (!offset) {
+            offset = term;
+        } else {
+            sum = new BinaryInstruction(func, IRInstOperator::IRINST_OP_ADD_I, offset, term, IntegerType::getTypeInt());
+            node->blockInsts.addInst(sum);
+            offset = sum;
+        }
+    }
+
+    // 5. 计算元素大小
+    int elem_size = arrType->getSize();
+    ConstInt * elem_size_val = module->newConstInt(elem_size);
+
+    // 6. 计算偏移字节数 offset_bytes = offset * elem_size
+    Value * offset_bytes = offset;
+    if (elem_size != 1) {
+        mul = new BinaryInstruction(func, IRInstOperator::IRINST_OP_MUL_I, offset, elem_size_val, IntegerType::getTypeInt());
+        node->blockInsts.addInst(mul);
+        offset_bytes = mul;
+    }
+
+    // 7. 计算基址
+    Value * base_addr = array_node->val;
+
+    // 8. 计算最终地址 addr = base_addr + offset_bytes
+    BinaryInstruction * addr = new BinaryInstruction(func, IRInstOperator::IRINST_OP_ADD_I, base_addr, offset_bytes, IntegerType::getTypeInt());
+    node->blockInsts.addInst(addr);
+
+    // 9. 生成load指令，读取该地址的值
+    UnaryInstruction * load = new UnaryInstruction(func, IRInstOperator::IRINST_OP_LOAD, addr, arrType);
+    node->blockInsts.addInst(load);
+
+    // 10. 设置节点的val为最终结果
+    node->val = load;
 
     return true;
 }

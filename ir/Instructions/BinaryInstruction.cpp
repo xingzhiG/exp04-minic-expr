@@ -117,6 +117,12 @@ void BinaryInstruction::toString(std::string & str)
 			str = getIRName() + " = or " + src1->getIRName() + "," + src2->getIRName();
 			break;
 
+		case IRInstOperator::IRINST_OP_STORE:
+            // 存储指令，二元运算
+            // *src1 = src2
+            str = "*" + src1->getIRName() + " = " + src2->getIRName();
+            break;
+
         default:
             // 未知指令
             Instruction::toString(str);

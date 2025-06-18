@@ -46,6 +46,10 @@ void UnaryInstruction::toString(std::string & str)
 			str = getIRName() + " = not " + src->getIRName();
 			break;
 
+		case IRInstOperator::IRINST_OP_LOAD:
+            str = getIRName() + " = *" + src->getIRName();
+            break;
+
         default:
             // 未知指令
             Instruction::toString(str);

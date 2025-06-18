@@ -210,6 +210,11 @@ protected:
     /// @return 成功返回node节点，否则返回nullptr
     ast_node * ir_visit_ast_node(ast_node * node);
 
+    /// @brief 数组访问AST节点翻译成线性中间IR（支持多维数组降维）
+    /// @param node AST节点（AST_OP_ARRAY_ACCESS）
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_array_access(ast_node * node);
+
     /// @brief AST的节点操作函数
     typedef bool (IRGenerator::*ast2ir_handler_t)(ast_node *);
 
