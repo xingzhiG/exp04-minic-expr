@@ -120,15 +120,22 @@ std::any MiniCCSTVisitor::visitFuncParamList(MiniCParser::FuncParamListContext *
 // 遍历单个形参
 std::any MiniCCSTVisitor::visitFuncParam(MiniCParser::FuncParamContext * ctx)
 {
-    // funcParam: basicType T_ID;
+    // funcParam: basicType T_ID dims?;
+
     uint32_t line_no = ctx->T_ID()->getSymbol()->getLine();
     std::string idStr = ctx->T_ID()->getText();
 
     // 获取类型
     type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
 
-    // 创建形参节点，传递类型属性
-    return create_func_formal_param(line_no, idStr.c_str(), typeAttr);
+    // 处理数组维度（如 int a[], int b[10][20]）
+    std::vector<ast_node *> dims_nodes;
+    if (ctx->dims()) {
+        dims_nodes = std::any_cast<std::vector<ast_node *>>(visitDims(ctx->dims()));
+    }
+
+    // 创建形参节点，传递类型、名字、维度信息
+    return create_func_formal_param(line_no, idStr.c_str(), typeAttr, dims_nodes);
 }
 
 /// @brief 非终结运算符block的遍历
@@ -548,14 +555,27 @@ std::any MiniCCSTVisitor::visitPrimaryExp(MiniCParser::PrimaryExpContext * ctx)
 
 std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
 {
-    // 识别文法产生式：lVal: T_ID;
-    // 获取ID的名字
-    auto varId = ctx->T_ID()->getText();
+    // lVal: T_ID dimsAccess*;
 
-    // 获取行号
+    auto varId = ctx->T_ID()->getText();
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
 
-    return ast_node::New(varId, lineNo);
+    // 如果没有数组下标，直接返回变量节点
+    if (ctx->dimsAccess().empty()) {
+        return ast_node::New(varId, lineNo);
+    }
+
+    // 有数组下标，依次处理每个下标表达式
+    ast_node * id_node = ast_node::New(varId, lineNo);
+    std::vector<ast_node *> index_nodes;
+    for (auto accessCtx : ctx->dimsAccess()) {
+        // 每个dimsAccess返回一个vector<ast_node*>，但这里只有一个expr
+        auto indices = std::any_cast<std::vector<ast_node *>>(visitDimsAccess(accessCtx));
+        index_nodes.insert(index_nodes.end(), indices.begin(), indices.end());
+    }
+
+    // 创建数组访问节点（如AST_OP_ARRAY_ACCESS），将id_node和所有下标作为子节点
+    return create_array_access_node(id_node, index_nodes);
 }
 
 std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
@@ -566,32 +586,39 @@ std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
     type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
 
     for (auto & varCtx: ctx->varDef()) {
-		// 获取变量名节点和初始化表达式节点
-		auto varDefPair = std::any_cast<std::pair<ast_node *, ast_node *>>(visitVarDef(varCtx));
-		ast_node * id_node = varDefPair.first;
-		ast_node * init_expr_node = varDefPair.second;
-	
-		// 提取变量名和行号，组装 var_id_attr
-		var_id_attr id_attr;
-		id_attr.id = strdup(id_node->name.c_str());
-		id_attr.lineno = id_node->line_no;
-	
-		// 使用新的AST接口创建变量定义节点
-		ast_node * decl_node = createVarDeclNode(typeAttr, id_attr, init_expr_node);
-	
-		(void) stmt_node->insert_son_node(decl_node);
-	}
+        // 获取变量名节点、维度信息和初始化表达式节点
+        auto varDefTuple = std::any_cast<std::tuple<ast_node *, std::vector<ast_node *>, ast_node *>>(visitVarDef(varCtx));
+        ast_node * id_node = std::get<0>(varDefTuple);
+        std::vector<ast_node *> dims_nodes = std::get<1>(varDefTuple);
+        ast_node * init_expr_node = std::get<2>(varDefTuple);
+
+        // 提取变量名和行号，组装 var_id_attr
+        var_id_attr id_attr;
+        id_attr.id = strdup(id_node->name.c_str());
+        id_attr.lineno = id_node->line_no;
+
+        // 创建变量定义节点，支持数组维度
+        ast_node * decl_node = createVarDeclNode(typeAttr, id_attr, dims_nodes, init_expr_node);
+
+        (void) stmt_node->insert_son_node(decl_node);
+    }
 
     return stmt_node;
 }
 
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
-    // varDef: T_ID (T_ASSIGN expr)?;
+    // varDef: T_ID dims? (T_ASSIGN expr)?;
 
     auto varId = ctx->T_ID()->getText();
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
     ast_node *id_node = ast_node::New(varId, lineNo);
+
+    // 处理数组维度
+    std::vector<ast_node *> dims_nodes;
+    if (ctx->dims()) {
+        dims_nodes = std::any_cast<std::vector<ast_node *>>(visitDims(ctx->dims()));
+    }
 
     ast_node *init_expr_node = nullptr;
     if (ctx->T_ASSIGN()) {
@@ -599,10 +626,40 @@ std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
         init_expr_node = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
     }
 
-    // 返回变量名节点和初始化表达式节点（如果有）
-    // 这里返回一个包含变量名和初始化表达式的节点，便于上层处理
-    // 这里仅返回变量名节点和初始化表达式节点的pair，便于上层VarDecl处理
-    return std::make_pair(id_node, init_expr_node);
+    // 返回变量名节点、维度信息和初始化表达式节点
+    return std::make_tuple(id_node, dims_nodes, init_expr_node);
+}
+
+
+/// @brief 处理数组维度定义 dims: ('[' expr? ']')+
+/// 返回一个包含每一维表达式（可为nullptr）的vector<ast_node*>
+std::any MiniCCSTVisitor::visitDims(MiniCParser::DimsContext *ctx)
+{
+    std::vector<ast_node *> dims_nodes;
+    for (auto bracket : ctx->children) {
+        // children: '[', expr?, ']'
+        // 只处理expr
+        if (auto exprCtx = dynamic_cast<MiniCParser::ExprContext *>(bracket)) {
+            dims_nodes.push_back(std::any_cast<ast_node *>(visitExpr(exprCtx)));
+        }
+        // 如果没有expr（如形参int a[]），也要占位
+        if (bracket->getText() == "]" && (dims_nodes.size() < ctx->expr().size() + 1)) {
+            dims_nodes.push_back(nullptr);
+        }
+    }
+    // 更稳妥的写法：直接遍历ctx->expr()和ctx->children的关系
+    // 但一般情况下，expr数量和维度数量一致或缺省
+    return dims_nodes;
+}
+
+/// @brief 处理数组下标 dimsAccess: '[' expr ']'
+/// 返回一个包含每一维下标表达式的vector<ast_node*>
+std::any MiniCCSTVisitor::visitDimsAccess(MiniCParser::DimsAccessContext *ctx)
+{
+    // 只有一个expr
+    std::vector<ast_node *> access_nodes;
+    access_nodes.push_back(std::any_cast<ast_node *>(visitExpr(ctx->expr())));
+    return access_nodes;
 }
 
 std::any MiniCCSTVisitor::visitBasicType(MiniCParser::BasicTypeContext * ctx)

@@ -264,6 +264,22 @@ ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, t
     return param_node;
 }
 
+ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, type_attr & param_type, const std::vector<ast_node *>& dims)
+{
+    ast_node * id_node = ast_node::New(std::string(param_name), line_no);
+    id_node->type = typeAttr2Type(param_type);
+
+    ast_node * param_node = create_contain_node(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, id_node);
+
+    // 插入维度节点
+    for (auto dim : dims) {
+        param_node->insert_son_node(dim);
+    }
+
+    param_node->type = typeAttr2Type(param_type);
+    return param_node;
+}
+
 /// @brief 创建AST的内部节点
 /// @param node_type 节点类型
 /// @param first_child 第一个孩子节点
@@ -474,6 +490,32 @@ ast_node * createVarDeclNode(type_attr & type, var_id_attr & id, ast_node * init
     return createVarDeclNode(typeAttr2Type(type), id, init_expr);
 }
 
+ast_node * createVarDeclNode(Type * type, var_id_attr & id, const std::vector<ast_node *>& dims, ast_node * init_expr)
+{
+    ast_node * type_node = ast_node::New(type);
+    ast_node * id_node = ast_node::New(id.id, id.lineno);
+    free(id.id); id.id = nullptr;
+
+    ast_node * decl_node = new ast_node(ast_operator_type::AST_OP_VAR_DECL, type, id_node->line_no);
+    decl_node->insert_son_node(type_node);
+    decl_node->insert_son_node(id_node);
+
+    // 插入维度节点
+    for (auto dim : dims) {
+        decl_node->insert_son_node(dim);
+    }
+
+    // 插入初始化表达式
+    if (init_expr) decl_node->insert_son_node(init_expr);
+
+    return decl_node;
+}
+
+ast_node * createVarDeclNode(type_attr & type, var_id_attr & id, const std::vector<ast_node *>& dims, ast_node * init_expr)
+{
+    return createVarDeclNode(typeAttr2Type(type), id, dims, init_expr);
+}
+
 ///
 /// @brief 根据变量的类型和属性创建变量声明语句节点
 /// @param type 变量的类型
@@ -511,4 +553,14 @@ ast_node * add_var_decl_node(ast_node * stmt_node, var_id_attr & id)
     (void) stmt_node->insert_son_node(decl_node);
 
     return stmt_node;
+}
+
+ast_node * create_array_access_node(ast_node * id_node, const std::vector<ast_node *>& index_nodes)
+{
+    ast_node * node = new ast_node(ast_operator_type::AST_OP_ARRAY_ACCESS, id_node->type, id_node->line_no);
+    node->insert_son_node(id_node);
+    for (auto idx : index_nodes) {
+        node->insert_son_node(idx);
+    }
+    return node;
 }

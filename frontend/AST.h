@@ -145,6 +145,9 @@ enum class ast_operator_type : int {
 
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
+
+	/// @brief 数组访问
+	AST_OP_ARRAY_ACCESS
 };
 
 ///
@@ -382,5 +385,17 @@ ast_node * create_var_decl_stmt_node(type_attr & type, var_id_attr & id);
 ///
 ast_node * add_var_decl_node(ast_node * stmt_node, var_id_attr & id);
 
+// 普通变量声明（无初值、无维度）
+ast_node * createVarDeclNode(Type * type, var_id_attr & id);
+// 普通变量声明（有初值、无维度）
 ast_node * createVarDeclNode(Type * type, var_id_attr & id, ast_node * init_expr);
+// 数组声明（有维度、有/无初值）
+ast_node * createVarDeclNode(Type * type, var_id_attr & id, const std::vector<ast_node *>& dims, ast_node * init_expr);
+// type_attr 版本
+ast_node * createVarDeclNode(type_attr & type, var_id_attr & id);
 ast_node * createVarDeclNode(type_attr & type, var_id_attr & id, ast_node * init_expr);
+ast_node * createVarDeclNode(type_attr & type, var_id_attr & id, const std::vector<ast_node *>& dims, ast_node * init_expr);
+
+ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, type_attr & param_type, const std::vector<ast_node *>& dims);
+
+ast_node * create_array_access_node(ast_node * id_node, const std::vector<ast_node *>& index_nodes);

@@ -41,6 +41,8 @@ public:
 
     virtual std::any visitVarDef(MiniCParser::VarDefContext *context) = 0;
 
+    virtual std::any visitDims(MiniCParser::DimsContext *context) = 0;
+
     virtual std::any visitReturnStatement(MiniCParser::ReturnStatementContext *context) = 0;
 
     virtual std::any visitAssignStatement(MiniCParser::AssignStatementContext *context) = 0;
@@ -84,6 +86,8 @@ public:
     virtual std::any visitRealParamList(MiniCParser::RealParamListContext *context) = 0;
 
     virtual std::any visitLVal(MiniCParser::LValContext *context) = 0;
+
+    virtual std::any visitDimsAccess(MiniCParser::DimsAccessContext *context) = 0;
 
 
 };

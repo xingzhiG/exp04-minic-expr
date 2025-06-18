@@ -59,6 +59,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitDims(MiniCParser::DimsContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitReturnStatement(MiniCParser::ReturnStatementContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -144,6 +148,10 @@ public:
   }
 
   virtual std::any visitLVal(MiniCParser::LValContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitDimsAccess(MiniCParser::DimsAccessContext *ctx) override {
     return visitChildren(ctx);
   }
 

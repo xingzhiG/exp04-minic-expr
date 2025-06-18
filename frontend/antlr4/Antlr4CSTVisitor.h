@@ -239,4 +239,19 @@ protected:
     /// @return std::any AST的节点
     ///
     std::any visitExpressionStatement(MiniCParser::ExpressionStatementContext * context) override;
+
+	///
+    /// @brief 非终结符Dims的分析（数组维度定义）
+    /// @param ctx CST上下文
+    /// @return std::any，通常为std::vector<ast_node *>
+    ///
+    std::any visitDims(MiniCParser::DimsContext * ctx) override;
+
+    ///
+    /// @brief 非终结符DimsAccess的分析（数组下标访问）
+    /// @param ctx CST上下文
+    /// @return std::any，通常为std::vector<ast_node *>
+    ///
+    std::any visitDimsAccess(MiniCParser::DimsAccessContext * ctx) override;
+
 };
