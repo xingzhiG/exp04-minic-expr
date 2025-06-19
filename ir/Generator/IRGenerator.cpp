@@ -1370,20 +1370,37 @@ bool IRGenerator::ir_array_access(ast_node * node)
         offset = sizeInst;
     }
 
-    // 检查是否用作函数参数
+    // 检查是否用作函数参数 - 更精确的判断
     bool isFuncParam = false;
     if (node->parent && node->parent->parent && 
         node->parent->parent->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
         if (node->parent == node->parent->parent->sons[1]) {
-            isFuncParam = true;
+            // 还需要检查：这是传递数组本身，还是数组的元素值
+            // 只有当数组访问后仍然是数组类型时，才是函数参数传递
+            
+            Type * originalType = arrayVar->getType();
+            Type * resultType = originalType;
+            
+            int accessedDims = indices.size();
+            for (int i = 0; i < accessedDims && resultType->isArrayType(); ++i) {
+                ArrayType * arrType = dynamic_cast<ArrayType *>(resultType);
+                if (arrType) {
+                    resultType = arrType->getElementType();
+                } else {
+                    break;
+                }
+            }
+            
+            // 只有当结果仍然是数组类型时，才是数组参数传递
+            isFuncParam = resultType->isArrayType();
         }
     }
 
-    // 6. 计算最终地址 - 根据用途决定类型
+    // 6. 计算最终地址
     BinaryInstruction * addressInst = nullptr;
     
     if (isFuncParam) {
-        // 函数参数：计算降维后的数组类型
+        // 函数参数：数组降维传递
         Type * originalType = arrayVar->getType();
         Type * reducedType = originalType;
         
@@ -1397,13 +1414,12 @@ bool IRGenerator::ir_array_access(ast_node * node)
             }
         }
         
-        // 创建具有降维数组类型的临时变量
         addressInst = new BinaryInstruction(
             func, IRInstOperator::IRINST_OP_ADD_I,
             arrayVar, offset, const_cast<Type*>(reducedType)
         );
     } else {
-        // 非函数参数：创建指针类型的临时变量（保持原有逻辑）
+        // 非函数参数：正常的指针类型
         Type * ptrType = const_cast<Type *>(static_cast<const Type *>(PointerType::get(elementType)));
         addressInst = new BinaryInstruction(
             func, IRInstOperator::IRINST_OP_ADD_I,
@@ -1419,10 +1435,10 @@ bool IRGenerator::ir_array_access(ast_node * node)
                      node->parent->sons[0] == node);
 
     if (isLValue || isFuncParam) {
-        // 左值或函数参数：直接返回地址
+        // 左值或数组参数：直接返回地址
         node->val = addressInst;
     } else {
-        // 右值：生成load指令
+        // 右值：生成load指令获取实际值
         UnaryInstruction * loadInst = new UnaryInstruction(
             func, IRInstOperator::IRINST_OP_LOAD,
             addressInst, elementType
