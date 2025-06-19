@@ -110,11 +110,13 @@ public:
     /// \return 临时Value
     ConstInt * newConstInt(int32_t intVal);
 
-    /// @brief 新建变量型Value，会根据currentFunc的值进行判断创建全局或者局部变量
+    /// @brief 新建变量型Value，会根据currentFunc的值进行判断创建全局或者局部变量，支持初始值
     /// ! 该函数只有在AST遍历生成线性IR中使用，其它地方不能使用
-    /// @param name 变量ID
     /// @param type 变量类型
-    Value * newVarValue(Type * type, std::string name = "");
+    /// @param name 变量ID
+    /// @param initValue 初始值（仅用于全局变量，可选）
+    /// @return 指针有效则创建成功，空指针则失败
+    Value * newVarValue(Type * type, std::string name = "", Constant * initValue = nullptr);
 
     /// @brief 查找变量（全局变量或局部变量），会根据作用域栈进行逐级查找。
     /// ! 该函数只有在AST遍历生成线性IR中使用，其它地方不能使用
@@ -141,12 +143,13 @@ protected:
     ConstInt * findConstInt(int32_t val);
 
     ///
-    /// @brief 新建全局变量，要求name必须有效，并且加入到全局符号表中。
+    /// @brief 新建全局变量，要求name必须有效，并且加入到全局符号表中，支持初始值。
     /// @param type 类型
     /// @param name 名字
+    /// @param initValue 初始值（可选）
     /// @return Value* 全局变量
     ///
-    GlobalVariable * newGlobalVariable(Type * type, std::string name);
+    GlobalVariable * newGlobalVariable(Type * type, std::string name, Constant * initValue = nullptr);
 
     /// @brief 根据变量名获取当前符号（只管理全局变量）
     /// \param name 变量名

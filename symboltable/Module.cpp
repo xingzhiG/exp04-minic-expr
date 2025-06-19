@@ -188,8 +188,9 @@ ConstInt * Module::findConstInt(int32_t val)
 /// ! 该函数只有在AST遍历生成线性IR中使用，其它地方不能使用
 /// @param type 变量类型
 /// @param name 变量ID 局部变量时可以为空，目的为了SSA时创建临时的局部变量，
+/// @param initValue 初始值（仅用于全局变量）
 /// @return nullptr则说明变量已存在，否则为新建的变量
-Value * Module::newVarValue(Type * type, std::string name)
+Value * Module::newVarValue(Type * type, std::string name, Constant * initValue)
 {
     Value * retVal;
     std::string varName;
@@ -210,6 +211,11 @@ Value * Module::newVarValue(Type * type, std::string name)
     }
 
     if (currentFunc) {
+        // 局部变量不支持 initValue 参数，如果有初始值需要通过 MoveInstruction 处理
+        if (initValue) {
+            minic_log(LOG_ERROR, "局部变量初始化应通过赋值指令处理");
+            return nullptr;
+        }
 
         // 获取变量作用域的层级
         int32_t scope_level;
@@ -222,7 +228,7 @@ Value * Module::newVarValue(Type * type, std::string name)
         retVal = currentFunc->newLocalVarValue(type, name, scope_level);
 
     } else {
-        retVal = newGlobalVariable(type, name);
+        retVal = newGlobalVariable(type, name, initValue);
     }
 
     // 增加做作用域中
@@ -245,14 +251,15 @@ Value * Module::findVarValue(std::string name)
 }
 
 ///
-/// @brief 新建全局变量，要求name必须有效，并且加入到全局符号表中。不检查是否现有的符号表中是否存在。
+/// @brief 新建全局变量，要求name必须有效，并且加入到全局符号表中，支持初始值。不检查是否现有的符号表中是否存在。
 /// @param type 类型
 /// @param name 名字
+/// @param initValue 初始值（可选）
 /// @return Value* 全局变量
 ///
-GlobalVariable * Module::newGlobalVariable(Type * type, std::string name)
+GlobalVariable * Module::newGlobalVariable(Type * type, std::string name, Constant * initValue)
 {
-    GlobalVariable * val = new GlobalVariable(type, name);
+    GlobalVariable * val = new GlobalVariable(type, name, initValue);
 
     insertGlobalValueDirectly(val);
 

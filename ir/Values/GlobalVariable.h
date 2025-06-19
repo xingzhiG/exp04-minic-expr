@@ -18,6 +18,7 @@
 
 #include "GlobalValue.h"
 #include "IRConstant.h"
+#include "ConstInt.h"
 
 #include "Types/ArrayType.h"
 
@@ -31,11 +32,18 @@ public:
     /// @brief 构建全局变量，默认对齐为4字节
     /// @param _type 类型
     /// @param _name 名字
+    /// @param _initValue 初始值（可选）
     ///
-    explicit GlobalVariable(Type * _type, std::string _name) : GlobalValue(_type, _name)
+    explicit GlobalVariable(Type * _type, std::string _name, Constant * _initValue = nullptr) 
+        : GlobalValue(_type, _name), initializer(_initValue)
     {
         // 设置对齐大小
         setAlignment(4);
+        
+        // 如果有非零初始值，则不在BSS段
+        if (_initValue && !isZeroInitializer(_initValue)) {
+            inBSSSection = false;
+        }
     }
 
     ///
@@ -86,32 +94,67 @@ public:
     }
 
     ///
-    /// @brief Declare指令IR显示
+    /// @brief 设置初始值
+    /// @param _initValue 初始值
+    ///
+    void setInitializer(Constant * _initValue)
+    {
+        initializer = _initValue;
+        if (_initValue && !isZeroInitializer(_initValue)) {
+            inBSSSection = false;
+        }
+    }
+
+    ///
+    /// @brief 获取初始值
+    /// @return 初始值，可能为nullptr
+    ///
+    Constant * getInitializer() const
+    {
+        return initializer;
+    }
+
+    ///
+    /// @brief 检查是否有初始值
+    /// @return true: 有初始值，false: 无初始值
+    ///
+    bool hasInitializer() const
+    {
+        return initializer != nullptr;
+    }
+
+    ///
+    /// @brief Declare指令IR显示，支持初始值
     /// @param str
     ///
-	void toDeclareString(std::string & str)
-	{
-		// 递归剥离数组类型，收集所有维度
-		Type * ty = getType();
-		std::vector<int> dims;
-		while (ty->isArrayType()) {
-			auto * arrTy = dynamic_cast<ArrayType *>(ty);
-			if (arrTy) {
-				dims.push_back(arrTy->getNumElements());
-				ty = arrTy->getElementType();
-			} else {
-				break;
-			}
-		}
+    void toDeclareString(std::string & str)
+    {
+        // 递归剥离数组类型，收集所有维度
+        Type * ty = getType();
+        std::vector<int> dims;
+        while (ty->isArrayType()) {
+            auto * arrTy = dynamic_cast<ArrayType *>(ty);
+            if (arrTy) {
+                dims.push_back(arrTy->getNumElements());
+                ty = arrTy->getElementType();
+            } else {
+                break;
+            }
+        }
 
-		// 输出基础类型
-		str = "declare " + ty->toString() + " " + getIRName();
+        // 输出基础类型
+        str = "declare " + ty->toString() + " " + getIRName();
 
-		// 追加所有维度
-		for (int dim : dims) {
-			str += "[" + std::to_string(dim) + "]";
-		}
-	}
+        // 追加所有维度
+        for (int dim : dims) {
+            str += "[" + std::to_string(dim) + "]";
+        }
+
+        // 添加初始值
+        if (hasInitializer()) {
+            str += " = " + initializer->getIRName();
+        }
+    }
 
 private:
     ///
@@ -123,4 +166,23 @@ private:
     /// @brief 默认全局变量在BSS段，没有初始化，或者即使初始化过，但都值都为0
     ///
     bool inBSSSection = true;
+
+    ///
+    /// @brief 全局变量的初始值
+    ///
+    Constant * initializer = nullptr;
+
+    ///
+    /// @brief 检查常量是否为零初始化
+    /// @param constant 常量
+    /// @return true: 是零值，false: 不是零值
+    ///
+    bool isZeroInitializer(Constant * constant) const
+    {
+        if (auto constInt = dynamic_cast<ConstInt*>(constant)) {
+            return constInt->getVal() == 0;
+        }
+        // 可以添加其他类型的零值检查
+        return false;
+    }
 };

@@ -1230,7 +1230,7 @@ bool IRGenerator::ir_declare_statment(ast_node * node)
     return result;
 }
 
-/// @brief 变量定声明节点翻译成线性中间IR
+/// @brief 变量声明AST节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_variable_declare(ast_node * node)
@@ -1242,39 +1242,69 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
     ast_node * type_node = node->sons[0];
     ast_node * name_or_array_node = node->sons[1];
 
+    Value * varValue = nullptr;
+    std::string var_name;
+    Type * var_type = nullptr;
+
     if (name_or_array_node->node_type == ast_operator_type::AST_OP_ARRAY_DECL) {
         // 数组声明
-        // sons[0] 是 id 节点
         ast_node * id_node = name_or_array_node->sons[0];
-        std::string var_name = id_node->name;
-        Type * var_type = node->type; // 或 name_or_array_node->type
-
-        // 生成变量并注册到符号表
-        node->val = module->newVarValue(var_type, var_name);
-
-        // 可递归处理维度表达式（如有需要）
-
+        var_name = id_node->name;
+        var_type = node->type; // 或 name_or_array_node->type
     } else {
         // 普通变量
-        std::string var_name = name_or_array_node->name;
-        Type * var_type = type_node->type;
-        node->val = module->newVarValue(var_type, var_name);
+        var_name = name_or_array_node->name;
+        var_type = type_node->type;
     }
 
-    // 处理初始化表达式
-    if (node->sons.size() > 2 && node->sons[2]) {
-        ast_node * init_expr_node = ir_visit_ast_node(node->sons[2]);
-        if (!init_expr_node) return false;
+    // 判断是否为全局变量（当前函数为空表示在全局作用域）
+    bool isGlobal = (module->getCurrentFunction() == nullptr);
 
-        MoveInstruction * movInst = new MoveInstruction(
-            module->getCurrentFunction(),
-            node->val,
-            init_expr_node->val
-        );
-        node->blockInsts.addInst(init_expr_node->blockInsts);
-        node->blockInsts.addInst(movInst);
+    if (isGlobal) {
+        // 全局变量处理
+        Constant * initValue = nullptr;
+        
+        if (node->sons.size() > 2 && node->sons[2]) {
+            // 有初始化值的全局变量
+            ast_node * init_expr_node = ir_visit_ast_node(node->sons[2]);
+            if (!init_expr_node) return false;
+            
+            // 全局变量的初始值必须是常量
+            if (auto constInt = dynamic_cast<ConstInt*>(init_expr_node->val)) {
+                initValue = constInt;
+            } else {
+                // 错误：全局变量初始值必须是常量
+                printf("Error: Global variable initializer must be a constant\n");
+                return false;
+            }
+        }
+        
+        // 创建全局变量，使用修改后的newVarValue方法
+        varValue = module->newVarValue(var_type, var_name, initValue);
+        if (!varValue) {
+            printf("Error: Failed to create global variable %s\n", var_name.c_str());
+            return false;
+        }
+    } else {
+        // 局部变量处理
+        varValue = module->newVarValue(var_type, var_name);
+        
+        // 处理局部变量的初始化表达式
+        if (node->sons.size() > 2 && node->sons[2]) {
+            ast_node * init_expr_node = ir_visit_ast_node(node->sons[2]);
+            if (!init_expr_node) return false;
+
+            MoveInstruction * movInst = new MoveInstruction(
+                module->getCurrentFunction(),
+                varValue,
+                init_expr_node->val
+            );
+            node->blockInsts.addInst(init_expr_node->blockInsts);
+            node->blockInsts.addInst(movInst);
+        }
     }
 
+    node->val = varValue;
     return true;
 }
 
