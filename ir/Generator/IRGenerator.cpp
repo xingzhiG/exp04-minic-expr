@@ -1250,7 +1250,7 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
         // 数组声明
         ast_node * id_node = name_or_array_node->sons[0];
         var_name = id_node->name;
-        var_type = node->type; // 或 name_or_array_node->type
+        var_type = node->type;
     } else {
         // 普通变量
         var_name = name_or_array_node->name;
@@ -1269,24 +1269,22 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
             ast_node * init_expr_node = ir_visit_ast_node(node->sons[2]);
             if (!init_expr_node) return false;
             
-            // 全局变量的初始值必须是常量
-            if (auto constInt = dynamic_cast<ConstInt*>(init_expr_node->val)) {
-                initValue = constInt;
-            } else {
-                // 错误：全局变量初始值必须是常量
-                printf("Error: Global variable initializer must be a constant\n");
-                return false;
+            // 尝试获取或计算常量值
+            initValue = extractConstantValue(init_expr_node->val);
+            
+            if (!initValue && init_expr_node->val) {
+                printf("Warning: Global variable '%s' initialized with non-constant value, using default initialization\n", var_name.c_str());
             }
         }
         
-        // 创建全局变量，使用修改后的newVarValue方法
+        // 创建全局变量
         varValue = module->newVarValue(var_type, var_name, initValue);
         if (!varValue) {
             printf("Error: Failed to create global variable %s\n", var_name.c_str());
             return false;
         }
     } else {
-        // 局部变量处理
+        // 局部变量处理（保持不变）
         varValue = module->newVarValue(var_type, var_name);
         
         // 处理局部变量的初始化表达式
@@ -1306,6 +1304,41 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
     node->val = varValue;
     return true;
+}
+
+/// @brief 从Value中提取或计算常量值（简化版）
+/// @param val Value指针
+/// @return 常量值，如果不能提取则返回nullptr
+Constant * IRGenerator::extractConstantValue(Value * val)
+{
+    if (!val) {
+        return nullptr;
+    }
+    
+    // 直接是常量的情况
+    if (auto constInt = dynamic_cast<ConstInt*>(val)) {
+        return constInt;
+    }
+    
+    if (auto constant = dynamic_cast<Constant*>(val)) {
+        return constant;
+    }
+    
+    // 处理一元指令的情况（主要是取负）
+    if (auto unaryInst = dynamic_cast<UnaryInstruction*>(val)) {
+        // 检查是否是取负操作
+        if (unaryInst->getOp() == IRInstOperator::IRINST_OP_NEG_I) {
+            // 获取操作数
+            Value * operand = unaryInst->getOperand(0);
+            if (auto constInt = dynamic_cast<ConstInt*>(operand)) {
+                // 计算取负结果并创建新的常量
+                int32_t negValue = -constInt->getVal();
+                return module->newConstInt(negValue);
+            }
+        }
+    }
+    
+    return nullptr;
 }
 
 /// @brief 数组访问AST节点翻译成线性中间IR（支持多维数组降维）

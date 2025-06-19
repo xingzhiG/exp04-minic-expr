@@ -200,6 +200,11 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_variable_declare(ast_node * node);
 
+	/// @brief 从Value中提取或计算常量值
+    /// @param val Value指针
+    /// @return 常量值，如果不能提取则返回nullptr
+    Constant * extractConstantValue(Value * val);
+
     /// @brief 未知节点类型的节点处理
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
