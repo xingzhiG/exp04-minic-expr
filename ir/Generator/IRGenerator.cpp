@@ -847,46 +847,104 @@ static bool is_logic_expr(ast_node * node) {
 
 // 逻辑与 && 短路求值
 bool IRGenerator::ir_and(ast_node * node) {
-    // 父节点应已设置 node->trueLabel 和 node->falseLabel
     Function * func = module->getCurrentFunction();
-    // 右操作数入口label
     LabelInstruction * rightLabel = new LabelInstruction(func);
 
-    // 左操作数：为真则跳到右操作数，为假则直接跳到falseLabel
-    node->sons[0]->trueLabel = rightLabel;
-    node->sons[0]->falseLabel = node->falseLabel;
-    ir_visit_ast_node(node->sons[0]);
-    node->blockInsts.addInst(node->sons[0]->blockInsts);
+    // 左操作数
+    if (is_logic_expr(node->sons[0])) {
+        node->sons[0]->trueLabel = rightLabel;
+        node->sons[0]->falseLabel = node->falseLabel;
+        ir_visit_ast_node(node->sons[0]);
+        node->blockInsts.addInst(node->sons[0]->blockInsts);
+    } else {
+        ast_node * left = ir_visit_ast_node(node->sons[0]);
+        if (!left) return false;
+        node->blockInsts.addInst(left->blockInsts);
+        // 生成 icmp ne
+        BinaryInstruction * cmpInst = new BinaryInstruction(
+            func,
+            IRInstOperator::IRINST_OP_NE,
+            left->val,
+            module->newConstInt(0),
+            IntegerType::getTypeBool()
+        );
+        node->blockInsts.addInst(cmpInst);
+        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, rightLabel, node->falseLabel));
+    }
 
-    // 右操作数：为真则跳到整个and的trueLabel，为假则跳到整个and的falseLabel
+    // 右操作数
     node->blockInsts.addInst(rightLabel);
-    node->sons[1]->trueLabel = node->trueLabel;
-    node->sons[1]->falseLabel = node->falseLabel;
-    ir_visit_ast_node(node->sons[1]);
-    node->blockInsts.addInst(node->sons[1]->blockInsts);
+    if (is_logic_expr(node->sons[1])) {
+        node->sons[1]->trueLabel = node->trueLabel;
+        node->sons[1]->falseLabel = node->falseLabel;
+        ir_visit_ast_node(node->sons[1]);
+        node->blockInsts.addInst(node->sons[1]->blockInsts);
+    } else {
+        ast_node * right = ir_visit_ast_node(node->sons[1]);
+        if (!right) return false;
+        node->blockInsts.addInst(right->blockInsts);
+        BinaryInstruction * cmpInst = new BinaryInstruction(
+            func,
+            IRInstOperator::IRINST_OP_NE,
+            right->val,
+            module->newConstInt(0),
+            IntegerType::getTypeBool()
+        );
+        node->blockInsts.addInst(cmpInst);
+        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, node->trueLabel, node->falseLabel));
+    }
 
     return true;
 }
 
 // 逻辑或 || 短路求值
 bool IRGenerator::ir_or(ast_node * node) {
-    // 父节点应已设置 node->trueLabel 和 node->falseLabel
     Function * func = module->getCurrentFunction();
-    // 右操作数入口label
     LabelInstruction * rightLabel = new LabelInstruction(func);
 
-    // 左操作数：为真则直接跳到trueLabel，为假则跳到右操作数
-    node->sons[0]->trueLabel = node->trueLabel;
-    node->sons[0]->falseLabel = rightLabel;
-    ir_visit_ast_node(node->sons[0]);
-    node->blockInsts.addInst(node->sons[0]->blockInsts);
+    // 左操作数
+    if (is_logic_expr(node->sons[0])) {
+        node->sons[0]->trueLabel = node->trueLabel;
+        node->sons[0]->falseLabel = rightLabel;
+        ir_visit_ast_node(node->sons[0]);
+        node->blockInsts.addInst(node->sons[0]->blockInsts);
+    } else {
+        ast_node * left = ir_visit_ast_node(node->sons[0]);
+        if (!left) return false;
+        node->blockInsts.addInst(left->blockInsts);
+        // 生成 icmp ne
+        BinaryInstruction * cmpInst = new BinaryInstruction(
+            func,
+            IRInstOperator::IRINST_OP_NE,
+            left->val,
+            module->newConstInt(0),
+            IntegerType::getTypeBool()
+        );
+        node->blockInsts.addInst(cmpInst);
+        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, node->trueLabel, rightLabel));
+    }
 
-    // 右操作数：为真则跳到整个or的trueLabel，为假则跳到整个or的falseLabel
+    // 右操作数
     node->blockInsts.addInst(rightLabel);
-    node->sons[1]->trueLabel = node->trueLabel;
-    node->sons[1]->falseLabel = node->falseLabel;
-    ir_visit_ast_node(node->sons[1]);
-    node->blockInsts.addInst(node->sons[1]->blockInsts);
+    if (is_logic_expr(node->sons[1])) {
+        node->sons[1]->trueLabel = node->trueLabel;
+        node->sons[1]->falseLabel = node->falseLabel;
+        ir_visit_ast_node(node->sons[1]);
+        node->blockInsts.addInst(node->sons[1]->blockInsts);
+    } else {
+        ast_node * right = ir_visit_ast_node(node->sons[1]);
+        if (!right) return false;
+        node->blockInsts.addInst(right->blockInsts);
+        BinaryInstruction * cmpInst = new BinaryInstruction(
+            func,
+            IRInstOperator::IRINST_OP_NE,
+            right->val,
+            module->newConstInt(0),
+            IntegerType::getTypeBool()
+        );
+        node->blockInsts.addInst(cmpInst);
+        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, node->trueLabel, node->falseLabel));
+    }
 
     return true;
 }
@@ -967,9 +1025,14 @@ bool IRGenerator::ir_if(ast_node * node)
 
     // then分支
     node->blockInsts.addInst(label_true);
-    ast_node * then_node = ir_visit_ast_node(node->sons[1]);
-    if (!then_node) return false;
-    node->blockInsts.addInst(then_node->blockInsts);
+    ast_node * then_node = nullptr;
+    if (node->sons.size() > 1) {
+        then_node = ir_visit_ast_node(node->sons[1]);
+    }
+    // then_node 可能为 nullptr（空语句），此时无需添加 blockInsts
+    if (then_node) {
+        node->blockInsts.addInst(then_node->blockInsts);
+    }
     node->blockInsts.addInst(new GotoInstruction(func, label_end));
 
     // else分支

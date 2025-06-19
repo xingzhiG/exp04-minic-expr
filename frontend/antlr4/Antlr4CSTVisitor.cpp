@@ -278,7 +278,10 @@ std::any MiniCCSTVisitor::visitIfStatement(MiniCParser::IfStatementContext * ctx
     ast_node * condNode = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
 
     // then分支
-    ast_node * thenNode = std::any_cast<ast_node *>(visitStatement(ctx->statement(0)));
+	ast_node * thenNode = nullptr;
+	if (ctx->statement(0)->getText() != ";"){
+    	thenNode = std::any_cast<ast_node *>(visitStatement(ctx->statement(0)));
+	}
 
     // else分支（可选）
     ast_node * elseNode = nullptr;
