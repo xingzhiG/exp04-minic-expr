@@ -1370,12 +1370,47 @@ bool IRGenerator::ir_array_access(ast_node * node)
         offset = sizeInst;
     }
 
-    // 6. 计算最终地址 - 关键：直接返回这个地址
-    Type * ptrType = const_cast<Type *>(static_cast<const Type *>(PointerType::get(elementType)));
-    BinaryInstruction * addressInst = new BinaryInstruction(
-        func, IRInstOperator::IRINST_OP_ADD_I,
-        arrayVar, offset, ptrType
-    );
+    // 检查是否用作函数参数
+    bool isFuncParam = false;
+    if (node->parent && node->parent->parent && 
+        node->parent->parent->node_type == ast_operator_type::AST_OP_FUNC_CALL) {
+        if (node->parent == node->parent->parent->sons[1]) {
+            isFuncParam = true;
+        }
+    }
+
+    // 6. 计算最终地址 - 根据用途决定类型
+    BinaryInstruction * addressInst = nullptr;
+    
+    if (isFuncParam) {
+        // 函数参数：计算降维后的数组类型
+        Type * originalType = arrayVar->getType();
+        Type * reducedType = originalType;
+        
+        int accessedDims = indices.size();
+        for (int i = 0; i < accessedDims && reducedType->isArrayType(); ++i) {
+            ArrayType * arrType = dynamic_cast<ArrayType *>(reducedType);
+            if (arrType) {
+                reducedType = arrType->getElementType();
+            } else {
+                break;
+            }
+        }
+        
+        // 创建具有降维数组类型的临时变量
+        addressInst = new BinaryInstruction(
+            func, IRInstOperator::IRINST_OP_ADD_I,
+            arrayVar, offset, const_cast<Type*>(reducedType)
+        );
+    } else {
+        // 非函数参数：创建指针类型的临时变量（保持原有逻辑）
+        Type * ptrType = const_cast<Type *>(static_cast<const Type *>(PointerType::get(elementType)));
+        addressInst = new BinaryInstruction(
+            func, IRInstOperator::IRINST_OP_ADD_I,
+            arrayVar, offset, ptrType
+        );
+    }
+    
     node->blockInsts.addInst(addressInst);
 
     // 7. 根据上下文决定返回地址还是值
@@ -1383,8 +1418,8 @@ bool IRGenerator::ir_array_access(ast_node * node)
                      node->parent->node_type == ast_operator_type::AST_OP_ASSIGN &&
                      node->parent->sons[0] == node);
 
-    if (isLValue) {
-        // 左值：直接返回地址，不生成load指令
+    if (isLValue || isFuncParam) {
+        // 左值或函数参数：直接返回地址
         node->val = addressInst;
     } else {
         // 右值：生成load指令
