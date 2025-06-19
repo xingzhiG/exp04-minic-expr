@@ -51,7 +51,7 @@ dims: ('[' expr ']')+; // 支持多维数组
 
 // 语句文法：扩展以支持条件语句和循环语句
 statement:
-	T_RETURN expr T_SEMICOLON										# returnStatement
+	T_RETURN expr? T_SEMICOLON										# returnStatement
 	| lVal T_ASSIGN expr T_SEMICOLON								# assignStatement
 	| block															# blockStatement
 	| expr? T_SEMICOLON												# expressionStatement
