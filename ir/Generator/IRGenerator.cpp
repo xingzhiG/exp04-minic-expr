@@ -842,19 +842,35 @@ static bool is_logic_expr(ast_node * node) {
            node->node_type == ast_operator_type::AST_OP_NOT;
 }
 
+/// @brief 辅助函数，判断是否为关系表达式
+static bool is_relational_expr(ast_node * node) {
+    return node->node_type == ast_operator_type::AST_OP_EQ ||
+           node->node_type == ast_operator_type::AST_OP_NE ||
+           node->node_type == ast_operator_type::AST_OP_LT ||
+           node->node_type == ast_operator_type::AST_OP_LE ||
+           node->node_type == ast_operator_type::AST_OP_GT ||
+           node->node_type == ast_operator_type::AST_OP_GE;
+}
+
+/// @brief 辅助函数，判断是否为条件表达式（逻辑或关系）
+static bool is_conditional_expr(ast_node * node) {
+    return is_logic_expr(node) || is_relational_expr(node);
+}
+
 // 逻辑与 && 短路求值
 bool IRGenerator::ir_and(ast_node * node) {
     Function * func = module->getCurrentFunction();
     LabelInstruction * rightLabel = new LabelInstruction(func);
 
     // 左操作数
-    if (is_logic_expr(node->sons[0])) {
-        node->sons[0]->trueLabel = rightLabel;
-        node->sons[0]->falseLabel = node->falseLabel;
-        ir_visit_ast_node(node->sons[0]);
-        node->blockInsts.addInst(node->sons[0]->blockInsts);
+    ast_node * leftChild = node->sons[0];
+    if (is_conditional_expr(leftChild)) { // 修改这里
+        leftChild->trueLabel = rightLabel;
+        leftChild->falseLabel = node->falseLabel;
+        ir_visit_ast_node(leftChild);
+        node->blockInsts.addInst(leftChild->blockInsts);
     } else {
-        ast_node * left = ir_visit_ast_node(node->sons[0]);
+        ast_node * left = ir_visit_ast_node(leftChild);
         if (!left) return false;
         node->blockInsts.addInst(left->blockInsts);
         // 生成 icmp ne
@@ -871,13 +887,14 @@ bool IRGenerator::ir_and(ast_node * node) {
 
     // 右操作数
     node->blockInsts.addInst(rightLabel);
-    if (is_logic_expr(node->sons[1])) {
-        node->sons[1]->trueLabel = node->trueLabel;
-        node->sons[1]->falseLabel = node->falseLabel;
-        ir_visit_ast_node(node->sons[1]);
-        node->blockInsts.addInst(node->sons[1]->blockInsts);
+    ast_node * rightChild = node->sons[1];
+    if (is_conditional_expr(rightChild)) { // 修改这里
+        rightChild->trueLabel = node->trueLabel;
+        rightChild->falseLabel = node->falseLabel;
+        ir_visit_ast_node(rightChild);
+        node->blockInsts.addInst(rightChild->blockInsts);
     } else {
-        ast_node * right = ir_visit_ast_node(node->sons[1]);
+        ast_node * right = ir_visit_ast_node(rightChild);
         if (!right) return false;
         node->blockInsts.addInst(right->blockInsts);
         BinaryInstruction * cmpInst = new BinaryInstruction(
@@ -900,13 +917,14 @@ bool IRGenerator::ir_or(ast_node * node) {
     LabelInstruction * rightLabel = new LabelInstruction(func);
 
     // 左操作数
-    if (is_logic_expr(node->sons[0])) {
-        node->sons[0]->trueLabel = node->trueLabel;
-        node->sons[0]->falseLabel = rightLabel;
-        ir_visit_ast_node(node->sons[0]);
-        node->blockInsts.addInst(node->sons[0]->blockInsts);
+    ast_node * leftChild = node->sons[0];
+    if (is_conditional_expr(leftChild)) { // 修改这里
+        leftChild->trueLabel = node->trueLabel;
+        leftChild->falseLabel = rightLabel;
+        ir_visit_ast_node(leftChild);
+        node->blockInsts.addInst(leftChild->blockInsts);
     } else {
-        ast_node * left = ir_visit_ast_node(node->sons[0]);
+        ast_node * left = ir_visit_ast_node(leftChild);
         if (!left) return false;
         node->blockInsts.addInst(left->blockInsts);
         // 生成 icmp ne
@@ -923,13 +941,14 @@ bool IRGenerator::ir_or(ast_node * node) {
 
     // 右操作数
     node->blockInsts.addInst(rightLabel);
-    if (is_logic_expr(node->sons[1])) {
-        node->sons[1]->trueLabel = node->trueLabel;
-        node->sons[1]->falseLabel = node->falseLabel;
-        ir_visit_ast_node(node->sons[1]);
-        node->blockInsts.addInst(node->sons[1]->blockInsts);
+    ast_node * rightChild = node->sons[1];
+    if (is_conditional_expr(rightChild)) { // 修改这里
+        rightChild->trueLabel = node->trueLabel;
+        rightChild->falseLabel = node->falseLabel;
+        ir_visit_ast_node(rightChild);
+        node->blockInsts.addInst(rightChild->blockInsts);
     } else {
-        ast_node * right = ir_visit_ast_node(node->sons[1]);
+        ast_node * right = ir_visit_ast_node(rightChild);
         if (!right) return false;
         node->blockInsts.addInst(right->blockInsts);
         BinaryInstruction * cmpInst = new BinaryInstruction(
@@ -946,12 +965,12 @@ bool IRGenerator::ir_or(ast_node * node) {
     return true;
 }
 
-// 逻辑非 !（只需交换真/假出口label）
+// 逻辑非 !
 bool IRGenerator::ir_not(ast_node * node) {
+    // 如果有跳转标签，说明在条件上下文中
     if (node->trueLabel && node->falseLabel) {
         ast_node * child = node->sons[0];
-        // 如果子节点是逻辑表达式，直接交换label递归
-        if (is_logic_expr(child)) {
+        if (is_conditional_expr(child)) {
             child->trueLabel = node->falseLabel;
             child->falseLabel = node->trueLabel;
             ir_visit_ast_node(child);
@@ -959,7 +978,6 @@ bool IRGenerator::ir_not(ast_node * node) {
             node->val = nullptr;
             return true;
         } else {
-            // 子节点不是逻辑表达式，生成 icmp eq x, 0 和条件跳转
             ast_node * operand = ir_visit_ast_node(child);
             if (!operand) return false;
             BinaryInstruction * eqInst = new BinaryInstruction(
@@ -978,16 +996,39 @@ bool IRGenerator::ir_not(ast_node * node) {
         }
     }
 
-    // 普通模式：生成 icmp eq x, 0
+    // 普通模式：需要返回整数值
     ast_node * operand = ir_visit_ast_node(node->sons[0]);
     if (!operand) return false;
 
-    // 生成与0比较的指令（假设只支持整型）
-    BinaryInstruction * eqInst = new BinaryInstruction(module->getCurrentFunction(),
-        IRInstOperator::IRINST_OP_EQ, operand->val, module->newConstInt(0), IntegerType::getTypeBool());
+    Function * func = module->getCurrentFunction();
+    
+    // 创建临时变量存储结果
+    Value * resultVar = module->newVarValue(IntegerType::getTypeInt(), "");
+    
+    // 生成条件分支
+    BinaryInstruction * eqInst = new BinaryInstruction(func,
+        IRInstOperator::IRINST_OP_EQ, operand->val, module->newConstInt(0), 
+        IntegerType::getTypeBool());
+    
+    LabelInstruction * trueLabel = new LabelInstruction(func);
+    LabelInstruction * falseLabel = new LabelInstruction(func);
+    LabelInstruction * endLabel = new LabelInstruction(func);
+    
     node->blockInsts.addInst(operand->blockInsts);
     node->blockInsts.addInst(eqInst);
-    node->val = eqInst;
+    node->blockInsts.addInst(new BranchCondInstruction(func, eqInst, trueLabel, falseLabel));
+    
+    // true分支：!操作结果为1
+    node->blockInsts.addInst(trueLabel);
+    node->blockInsts.addInst(new MoveInstruction(func, resultVar, module->newConstInt(1)));
+    node->blockInsts.addInst(new GotoInstruction(func, endLabel));
+    
+    // false分支：!操作结果为0
+    node->blockInsts.addInst(falseLabel);
+    node->blockInsts.addInst(new MoveInstruction(func, resultVar, module->newConstInt(0)));
+    node->blockInsts.addInst(endLabel);
+    
+    node->val = resultVar;
     return true;
 }
 
@@ -1005,8 +1046,8 @@ bool IRGenerator::ir_if(ast_node * node)
     LabelInstruction * label_end = new LabelInstruction(func);
 
     ast_node * cond_node = node->sons[0];
-    // 只对逻辑表达式传递label
-    if (is_logic_expr(cond_node)) {
+    // 对所有条件表达式传递label
+    if (is_conditional_expr(cond_node)) { // 修改这里
         cond_node->trueLabel = label_true;
         cond_node->falseLabel = label_false;
     }
@@ -1015,8 +1056,8 @@ bool IRGenerator::ir_if(ast_node * node)
 
     node->blockInsts.addInst(cond_node->blockInsts);
 
-    // 只有非逻辑表达式才生成 BranchCondInstruction
-    if (!is_logic_expr(cond_node) && cond_node->val) {
+    // 只有非条件表达式才生成 BranchCondInstruction
+    if (!is_conditional_expr(cond_node) && cond_node->val) { // 修改这里
         node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_true, label_false));
     }
 
@@ -1026,7 +1067,6 @@ bool IRGenerator::ir_if(ast_node * node)
     if (node->sons.size() > 1) {
         then_node = ir_visit_ast_node(node->sons[1]);
     }
-    // then_node 可能为 nullptr（空语句），此时无需添加 blockInsts
     if (then_node) {
         node->blockInsts.addInst(then_node->blockInsts);
     }
@@ -1075,7 +1115,7 @@ bool IRGenerator::ir_while(ast_node * node)
     node->blockInsts.addInst(label_cond);
 
     ast_node * cond_node = node->sons[0];
-    if (is_logic_expr(cond_node)) {
+    if (is_conditional_expr(cond_node)) { // 修改这里
         cond_node->trueLabel = label_body;
         cond_node->falseLabel = label_end;
     }
@@ -1083,7 +1123,7 @@ bool IRGenerator::ir_while(ast_node * node)
     if (!cond_node) return false;
     node->blockInsts.addInst(cond_node->blockInsts);
 
-    if (!is_logic_expr(cond_node) && cond_node->val) {
+    if (!is_conditional_expr(cond_node) && cond_node->val) { // 修改这里
         node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_body, label_end));
     }
 
