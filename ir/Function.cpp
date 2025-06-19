@@ -91,7 +91,22 @@ void Function::toString(std::string & str)
             str += ", ";
         }
 
-        std::string param_str = param->getType()->toString() + param->getIRName();
+        // 递归分解数组类型，输出C风格参数
+        Type* ty = param->getType();
+        std::vector<int> dims;
+        while (ty->isArrayType()) {
+            auto* arrTy = dynamic_cast<ArrayType*>(ty);
+            if (arrTy) {
+                dims.push_back(arrTy->getNumElements());
+                ty = arrTy->getElementType();
+            } else {
+                break;
+            }
+        }
+        std::string param_str = ty->toString() + " " + param->getIRName();
+        for (int d : dims) {
+            param_str += "[" + std::to_string(d) + "]";
+        }
 
         str += param_str;
     }

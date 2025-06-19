@@ -267,8 +267,26 @@ ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, t
 
 ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, type_attr & param_type, const std::vector<ast_node *>& dims)
 {
+    // 递归构造数组类型（最高维为nullptr时可用0表示）
+    Type * baseType = nullptr;
+    if (param_type.type == BasicType::TYPE_INT) {
+        baseType = IntegerType::getTypeInt();
+    } else {
+        baseType = VoidType::getType();
+    }
+    // 递归包裹所有维度
+    for (auto it = dims.rbegin(); it != dims.rend(); ++it) {
+        ast_node * dim = *it;
+        int dim_size = 0;
+        if (dim && dim->node_type == ast_operator_type::AST_OP_LEAF_LITERAL_UINT) {
+            dim_size = static_cast<int>(dim->integer_val);
+        }
+        // 最高维省略时dim为nullptr，dim_size为0
+        baseType = new ArrayType(baseType, dim_size);
+    }
+
     ast_node * id_node = ast_node::New(std::string(param_name), line_no);
-    id_node->type = typeAttr2Type(param_type);
+    id_node->type = baseType;
 
     ast_node * param_node = create_contain_node(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, id_node);
 
@@ -277,7 +295,7 @@ ast_node * create_func_formal_param(uint32_t line_no, const char * param_name, t
         param_node->insert_son_node(dim);
     }
 
-    param_node->type = typeAttr2Type(param_type);
+    param_node->type = baseType;
     return param_node;
 }
 

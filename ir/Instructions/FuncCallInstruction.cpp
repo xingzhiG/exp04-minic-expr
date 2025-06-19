@@ -35,6 +35,21 @@ FuncCallInstruction::FuncCallInstruction(Function * _func,
     }
 }
 
+// 工具函数：将数组类型分解为基础类型和维度
+static void getBaseTypeAndDims(Type* type, std::string& baseTypeStr, std::vector<int>& dims) {
+    Type* ty = type;
+    while (ty->isArrayType()) {
+        auto* arrTy = dynamic_cast<ArrayType*>(ty);
+        if (arrTy) {
+            dims.push_back(arrTy->getNumElements());
+            ty = arrTy->getElementType();
+        } else {
+            break;
+        }
+    }
+    baseTypeStr = ty->toString();
+}
+
 /// @brief 转换成字符串显示
 /// @param str 转换后的字符串
 void FuncCallInstruction::toString(std::string & str)
@@ -67,7 +82,22 @@ void FuncCallInstruction::toString(std::string & str)
     // 输出参数类型和参数
     for (int32_t k = 0; k < operandsNum; ++k) {
         auto operand = getOperand(k);
-        str += operand->getType()->toString() + " " + operand->getIRName();
+        Type* opType = operand->getType();
+
+        // 判断是否为数组类型
+        if (opType->isArrayType()) {
+            std::string baseTypeStr;
+            std::vector<int> dims;
+            getBaseTypeAndDims(opType, baseTypeStr, dims);
+
+            str += baseTypeStr + " " + operand->getIRName();
+            for (int d : dims) {
+                str += "[" + std::to_string(d) + "]";
+            }
+        } else {
+            str += opType->toString() + " " + operand->getIRName();
+        }
+
         if (k != (operandsNum - 1)) {
             str += ", ";
         }
