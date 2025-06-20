@@ -92,6 +92,13 @@ protected:
 	/// @return 翻译是否成功，true：成功，false：失败
 	bool ir_mod(ast_node * node);
 
+	/// @brief 确保条件值为i1类型
+	/// @param val 可能的条件值
+	/// @param func 当前函数
+	/// @param blockInsts 指令块
+	/// @return i1类型的条件值
+	Value * ensureBoolCondition(Value * val, Function * func, InterCode & blockInsts);
+	
 	/// @brief 等于 == AST节点翻译成线性中间IR
 	/// @param node AST节点
 	/// @return 翻译是否成功，true：成功，false：失败

@@ -189,12 +189,22 @@ std::any MiniCCSTVisitor::visitBlockItemList(MiniCParser::BlockItemListContext *
     auto block_node = create_contain_node(ast_operator_type::AST_OP_BLOCK);
 
     for (auto blockItemCtx: ctx->blockItem()) {
-
-        // 非终结符，需遍历
-        auto blockItem = std::any_cast<ast_node *>(visitBlockItem(blockItemCtx));
-
-        // 插入到块节点中
-        (void) block_node->insert_son_node(blockItem);
+        try {
+            // 非终结符，需遍历
+            auto result = visitBlockItem(blockItemCtx);
+            
+            // 检查是否为空语句
+            if (result.has_value()) {
+                ast_node * blockItem = std::any_cast<ast_node *>(result);
+                if (blockItem != nullptr) {  // 只添加非空节点
+                    block_node->insert_son_node(blockItem);
+                }
+                // blockItem为nullptr时（空语句），直接忽略，不添加到AST中
+            }
+        } catch (const std::bad_any_cast& e) {
+            printf("Warning: Failed to process block item, skipping\n");
+            continue;
+        }
     }
 
     return block_node;
@@ -209,49 +219,58 @@ std::any MiniCCSTVisitor::visitBlockItem(MiniCParser::BlockItemContext * ctx)
     // 识别的文法产生式：blockItem : statement | varDecl
     if (ctx->statement()) {
         // 语句识别
-
         return visitStatement(ctx->statement());
     } else if (ctx->varDecl()) {
         return visitVarDecl(ctx->varDecl());
     }
 
-    return nullptr;
+    // 返回nullptr作为空标记
+    ast_node * empty_marker = nullptr;
+    return std::any(empty_marker);
 }
 
 /// @brief 非终结运算符statement中的遍历
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
 {
-	// 识别的文法产生式：
+    // 识别的文法产生式：
     // statement:
-	// T_RETURN expr T_SEMICOLON										# returnStatement
-	// | lVal T_ASSIGN expr T_SEMICOLON								# assignStatement
-	// | block															# blockStatement
-	// | expr? T_SEMICOLON												# expressionStatement
-	// | T_IF T_L_PAREN expr T_R_PAREN statement (T_ELSE statement)?	# ifStatement
-	// | T_WHILE T_L_PAREN expr T_R_PAREN statement					# whileStatement
-	// | T_BREAK T_SEMICOLON											# breakStatement
-	// | T_CONTINUE T_SEMICOLON										# continueStatement;
+    // T_RETURN expr T_SEMICOLON										# returnStatement
+    // | lVal T_ASSIGN expr T_SEMICOLON								# assignStatement
+    // | block															# blockStatement
+    // | expr? T_SEMICOLON												# expressionStatement
+    // | T_IF T_L_PAREN expr T_R_PAREN statement (T_ELSE statement)?	# ifStatement
+    // | T_WHILE T_L_PAREN expr T_R_PAREN statement					# whileStatement
+    // | T_BREAK T_SEMICOLON											# breakStatement
+    // | T_CONTINUE T_SEMICOLON										# continueStatement;
 
-    if (Instanceof(assignCtx, MiniCParser::AssignStatementContext *, ctx)) {
-        return visitAssignStatement(assignCtx);
-    } else if (Instanceof(returnCtx, MiniCParser::ReturnStatementContext *, ctx)) {
-        return visitReturnStatement(returnCtx);
-    } else if (Instanceof(blockCtx, MiniCParser::BlockStatementContext *, ctx)) {
-        return visitBlockStatement(blockCtx);
-    } else if (Instanceof(exprCtx, MiniCParser::ExpressionStatementContext *, ctx)) {
-        return visitExpressionStatement(exprCtx);
-    } else if (Instanceof(ifCtx, MiniCParser::IfStatementContext *, ctx)) {
-        return visitIfStatement(ifCtx);
-    } else if (Instanceof(whileCtx, MiniCParser::WhileStatementContext *, ctx)) {
-        return visitWhileStatement(whileCtx);
-    } else if (Instanceof(breakCtx, MiniCParser::BreakStatementContext *, ctx)) {
-        return visitBreakStatement(breakCtx);
-    } else if (Instanceof(continueCtx, MiniCParser::ContinueStatementContext *, ctx)) {
-        return visitContinueStatement(continueCtx);
+    try {
+        if (Instanceof(assignCtx, MiniCParser::AssignStatementContext *, ctx)) {
+            return visitAssignStatement(assignCtx);
+        } else if (Instanceof(returnCtx, MiniCParser::ReturnStatementContext *, ctx)) {
+            return visitReturnStatement(returnCtx);
+        } else if (Instanceof(blockCtx, MiniCParser::BlockStatementContext *, ctx)) {
+            return visitBlockStatement(blockCtx);
+        } else if (Instanceof(exprCtx, MiniCParser::ExpressionStatementContext *, ctx)) {
+            return visitExpressionStatement(exprCtx);
+        } else if (Instanceof(ifCtx, MiniCParser::IfStatementContext *, ctx)) {
+            return visitIfStatement(ifCtx);
+        } else if (Instanceof(whileCtx, MiniCParser::WhileStatementContext *, ctx)) {
+            return visitWhileStatement(whileCtx);
+        } else if (Instanceof(breakCtx, MiniCParser::BreakStatementContext *, ctx)) {
+            return visitBreakStatement(breakCtx);
+        } else if (Instanceof(continueCtx, MiniCParser::ContinueStatementContext *, ctx)) {
+            return visitContinueStatement(continueCtx);
+        }
+    } catch (const std::exception& e) {
+        printf("Error processing statement: %s\n", e.what());
+        ast_node * empty_marker = nullptr;
+        return std::any(empty_marker);
     }
 
-    return nullptr;
+    // 默认返回空标记
+    ast_node * empty_marker = nullptr;
+    return std::any(empty_marker);
 }
 
 ///
@@ -281,16 +300,30 @@ std::any MiniCCSTVisitor::visitIfStatement(MiniCParser::IfStatementContext * ctx
     // 条件表达式
     ast_node * condNode = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
 
-    // then分支
-	ast_node * thenNode = nullptr;
-	if (ctx->statement(0)->getText() != ";"){
-    	thenNode = std::any_cast<ast_node *>(visitStatement(ctx->statement(0)));
-	}
+    // then分支 - 安全处理
+    ast_node * thenNode = nullptr;
+    try {
+        auto thenResult = visitStatement(ctx->statement(0));
+        if (thenResult.has_value()) {
+            thenNode = std::any_cast<ast_node *>(thenResult);
+        }
+    } catch (const std::bad_any_cast& e) {
+        printf("Warning: Failed to process then statement in if\n");
+        thenNode = nullptr;
+    }
 
-    // else分支（可选）
+    // else分支（可选）- 安全处理
     ast_node * elseNode = nullptr;
     if (ctx->T_ELSE()) {
-        elseNode = std::any_cast<ast_node *>(visitStatement(ctx->statement(1)));
+        try {
+            auto elseResult = visitStatement(ctx->statement(1));
+            if (elseResult.has_value()) {
+                elseNode = std::any_cast<ast_node *>(elseResult);
+            }
+        } catch (const std::bad_any_cast& e) {
+            printf("Warning: Failed to process else statement in if\n");
+            elseNode = nullptr;
+        }
     }
 
     // 创建if节点
@@ -301,8 +334,17 @@ std::any MiniCCSTVisitor::visitWhileStatement(MiniCParser::WhileStatementContext
     // 条件表达式
     ast_node * condNode = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
 
-    // 循环体
-    ast_node * bodyNode = std::any_cast<ast_node *>(visitStatement(ctx->statement()));
+    // 循环体 - 安全处理
+    ast_node * bodyNode = nullptr;
+    try {
+        auto bodyResult = visitStatement(ctx->statement());
+        if (bodyResult.has_value()) {
+            bodyNode = std::any_cast<ast_node *>(bodyResult);
+        }
+    } catch (const std::bad_any_cast& e) {
+        printf("Warning: Failed to process while body statement\n");
+        bodyNode = nullptr;
+    }
 
     // 创建while节点
     return create_contain_node(ast_operator_type::AST_OP_WHILE, condNode, bodyNode, nullptr);
@@ -717,13 +759,10 @@ std::any MiniCCSTVisitor::visitExpressionStatement(MiniCParser::ExpressionStatem
     // 识别文法产生式  expr ? T_SEMICOLON #expressionStatement;
     if (ctx->expr()) {
         // 表达式语句
-
-        // 遍历expr非终结符，创建表达式节点后返回
         return visitExpr(ctx->expr());
     } else {
-        // 空语句
-
-        // 直接返回空指针，需要再把语句加入到语句块时要注意判断，空语句不要加入
-        return nullptr;
+        // 空语句：返回特殊标记（nullptr）
+        ast_node * empty_marker = nullptr;
+        return std::any(empty_marker);
     }
 }

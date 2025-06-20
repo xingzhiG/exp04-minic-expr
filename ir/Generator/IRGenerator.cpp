@@ -709,6 +709,38 @@ bool IRGenerator::ir_mod(ast_node * node)
     return true;
 }
 
+/// @brief 确保条件值为i1类型
+/// @param val 可能的条件值
+/// @param func 当前函数
+/// @param blockInsts 指令块
+/// @return i1类型的条件值
+Value * IRGenerator::ensureBoolCondition(Value * val, Function * func, InterCode & blockInsts) {
+    if (!val) return nullptr;
+    
+    // 如果已经是i1类型，直接返回
+    if (val->getType()->isIntegerType()) {
+        auto intType = dynamic_cast<IntegerType*>(val->getType());
+        if (intType && intType->getBitWidth() == 1) {
+            return val;
+        }
+    }
+    
+    // 如果是i32类型，需要与0比较
+    if (val->getType() == IntegerType::getTypeInt()) {
+        BinaryInstruction * cmpInst = new BinaryInstruction(
+            func,
+            IRInstOperator::IRINST_OP_NE,
+            val,
+            module->newConstInt(0),
+            IntegerType::getTypeBool()
+        );
+        blockInsts.addInst(cmpInst);
+        return cmpInst;
+    }
+    
+    return val;
+}
+
 // 等于 ==
 bool IRGenerator::ir_eq(ast_node * node) {
     ast_node * left = ir_visit_ast_node(node->sons[0]);
@@ -864,7 +896,7 @@ bool IRGenerator::ir_and(ast_node * node) {
 
     // 左操作数
     ast_node * leftChild = node->sons[0];
-    if (is_conditional_expr(leftChild)) { // 修改这里
+    if (is_conditional_expr(leftChild)) {
         leftChild->trueLabel = rightLabel;
         leftChild->falseLabel = node->falseLabel;
         ir_visit_ast_node(leftChild);
@@ -873,22 +905,16 @@ bool IRGenerator::ir_and(ast_node * node) {
         ast_node * left = ir_visit_ast_node(leftChild);
         if (!left) return false;
         node->blockInsts.addInst(left->blockInsts);
-        // 生成 icmp ne
-        BinaryInstruction * cmpInst = new BinaryInstruction(
-            func,
-            IRInstOperator::IRINST_OP_NE,
-            left->val,
-            module->newConstInt(0),
-            IntegerType::getTypeBool()
-        );
-        node->blockInsts.addInst(cmpInst);
-        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, rightLabel, node->falseLabel));
+        
+        // 确保生成正确的比较指令
+        Value * condVal = ensureBoolCondition(left->val, func, node->blockInsts);
+        node->blockInsts.addInst(new BranchCondInstruction(func, condVal, rightLabel, node->falseLabel));
     }
 
     // 右操作数
     node->blockInsts.addInst(rightLabel);
     ast_node * rightChild = node->sons[1];
-    if (is_conditional_expr(rightChild)) { // 修改这里
+    if (is_conditional_expr(rightChild)) {
         rightChild->trueLabel = node->trueLabel;
         rightChild->falseLabel = node->falseLabel;
         ir_visit_ast_node(rightChild);
@@ -897,15 +923,9 @@ bool IRGenerator::ir_and(ast_node * node) {
         ast_node * right = ir_visit_ast_node(rightChild);
         if (!right) return false;
         node->blockInsts.addInst(right->blockInsts);
-        BinaryInstruction * cmpInst = new BinaryInstruction(
-            func,
-            IRInstOperator::IRINST_OP_NE,
-            right->val,
-            module->newConstInt(0),
-            IntegerType::getTypeBool()
-        );
-        node->blockInsts.addInst(cmpInst);
-        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, node->trueLabel, node->falseLabel));
+        
+        Value * condVal = ensureBoolCondition(right->val, func, node->blockInsts);
+        node->blockInsts.addInst(new BranchCondInstruction(func, condVal, node->trueLabel, node->falseLabel));
     }
 
     return true;
@@ -918,7 +938,7 @@ bool IRGenerator::ir_or(ast_node * node) {
 
     // 左操作数
     ast_node * leftChild = node->sons[0];
-    if (is_conditional_expr(leftChild)) { // 修改这里
+    if (is_conditional_expr(leftChild)) {
         leftChild->trueLabel = node->trueLabel;
         leftChild->falseLabel = rightLabel;
         ir_visit_ast_node(leftChild);
@@ -927,22 +947,15 @@ bool IRGenerator::ir_or(ast_node * node) {
         ast_node * left = ir_visit_ast_node(leftChild);
         if (!left) return false;
         node->blockInsts.addInst(left->blockInsts);
-        // 生成 icmp ne
-        BinaryInstruction * cmpInst = new BinaryInstruction(
-            func,
-            IRInstOperator::IRINST_OP_NE,
-            left->val,
-            module->newConstInt(0),
-            IntegerType::getTypeBool()
-        );
-        node->blockInsts.addInst(cmpInst);
-        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, node->trueLabel, rightLabel));
+        
+        Value * condVal = ensureBoolCondition(left->val, func, node->blockInsts);
+        node->blockInsts.addInst(new BranchCondInstruction(func, condVal, node->trueLabel, rightLabel));
     }
 
     // 右操作数
     node->blockInsts.addInst(rightLabel);
     ast_node * rightChild = node->sons[1];
-    if (is_conditional_expr(rightChild)) { // 修改这里
+    if (is_conditional_expr(rightChild)) {
         rightChild->trueLabel = node->trueLabel;
         rightChild->falseLabel = node->falseLabel;
         ir_visit_ast_node(rightChild);
@@ -951,15 +964,9 @@ bool IRGenerator::ir_or(ast_node * node) {
         ast_node * right = ir_visit_ast_node(rightChild);
         if (!right) return false;
         node->blockInsts.addInst(right->blockInsts);
-        BinaryInstruction * cmpInst = new BinaryInstruction(
-            func,
-            IRInstOperator::IRINST_OP_NE,
-            right->val,
-            module->newConstInt(0),
-            IntegerType::getTypeBool()
-        );
-        node->blockInsts.addInst(cmpInst);
-        node->blockInsts.addInst(new BranchCondInstruction(func, cmpInst, node->trueLabel, node->falseLabel));
+        
+        Value * condVal = ensureBoolCondition(right->val, func, node->blockInsts);
+        node->blockInsts.addInst(new BranchCondInstruction(func, condVal, node->trueLabel, node->falseLabel));
     }
 
     return true;
@@ -980,8 +987,10 @@ bool IRGenerator::ir_not(ast_node * node) {
         } else {
             ast_node * operand = ir_visit_ast_node(child);
             if (!operand) return false;
+            
+            Function * func = module->getCurrentFunction();
             BinaryInstruction * eqInst = new BinaryInstruction(
-                module->getCurrentFunction(),
+                func,
                 IRInstOperator::IRINST_OP_EQ,
                 operand->val,
                 module->newConstInt(0),
@@ -990,7 +999,7 @@ bool IRGenerator::ir_not(ast_node * node) {
             node->blockInsts.addInst(operand->blockInsts);
             node->blockInsts.addInst(eqInst);
             node->blockInsts.addInst(new BranchCondInstruction(
-                module->getCurrentFunction(), eqInst, node->trueLabel, node->falseLabel));
+                func, eqInst, node->trueLabel, node->falseLabel));
             node->val = eqInst;
             return true;
         }
@@ -1047,7 +1056,7 @@ bool IRGenerator::ir_if(ast_node * node)
 
     ast_node * cond_node = node->sons[0];
     // 对所有条件表达式传递label
-    if (is_conditional_expr(cond_node)) { // 修改这里
+    if (is_conditional_expr(cond_node)) {
         cond_node->trueLabel = label_true;
         cond_node->falseLabel = label_false;
     }
@@ -1057,8 +1066,10 @@ bool IRGenerator::ir_if(ast_node * node)
     node->blockInsts.addInst(cond_node->blockInsts);
 
     // 只有非条件表达式才生成 BranchCondInstruction
-    if (!is_conditional_expr(cond_node) && cond_node->val) { // 修改这里
-        node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_true, label_false));
+    if (!is_conditional_expr(cond_node) && cond_node->val) {
+        // 确保条件值为i1类型
+        Value * condVal = ensureBoolCondition(cond_node->val, func, node->blockInsts);
+        node->blockInsts.addInst(new BranchCondInstruction(func, condVal, label_true, label_false));
     }
 
     // then分支
@@ -1115,7 +1126,7 @@ bool IRGenerator::ir_while(ast_node * node)
     node->blockInsts.addInst(label_cond);
 
     ast_node * cond_node = node->sons[0];
-    if (is_conditional_expr(cond_node)) { // 修改这里
+    if (is_conditional_expr(cond_node)) {
         cond_node->trueLabel = label_body;
         cond_node->falseLabel = label_end;
     }
@@ -1123,8 +1134,21 @@ bool IRGenerator::ir_while(ast_node * node)
     if (!cond_node) return false;
     node->blockInsts.addInst(cond_node->blockInsts);
 
-    if (!is_conditional_expr(cond_node) && cond_node->val) { // 修改这里
-        node->blockInsts.addInst(new BranchCondInstruction(func, cond_node->val, label_body, label_end));
+    if (!is_conditional_expr(cond_node) && cond_node->val) {
+        // 特殊处理常量1的情况
+        if (auto constInt = dynamic_cast<ConstInt*>(cond_node->val)) {
+            if (constInt->getVal() != 0) {
+                // while(1) 使用无条件跳转
+                node->blockInsts.addInst(new GotoInstruction(func, label_body));
+            } else {
+                // while(0) 跳转到结束
+                node->blockInsts.addInst(new GotoInstruction(func, label_end));
+            }
+        } else {
+            // 确保条件值为i1类型
+            Value * condVal = ensureBoolCondition(cond_node->val, func, node->blockInsts);
+            node->blockInsts.addInst(new BranchCondInstruction(func, condVal, label_body, label_end));
+        }
     }
 
     node->blockInsts.addInst(label_body);
